@@ -2,7 +2,7 @@
 
 import sys,time
 from PySide6.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel,QMessageBox
-from PySide6.QtCore import QThread, QObject, Signal
+from PySide6.QtCore import Qt, QObject, Signal
 from galop_ui import Ui_MainWindow
 
 current_values = {
@@ -10,6 +10,7 @@ current_values = {
         {
             "global": "0.0",
             "local": "0.0",
+            "origin": "0.0",
             "step": "1.0",
             "acc": "0.5",
             "speed": "0.5"
@@ -18,6 +19,7 @@ current_values = {
         {
             "global": "0.0",
             "local": "0.0",
+            "origin": "0.0",
             "step": "1.0",
             "acc": "0.5",
             "speed": "0.5"
@@ -26,6 +28,7 @@ current_values = {
         {
             "global": "0.0",
             "local": "0.0",
+            "origin": "0.0",
             "step": "1.0",
             "acc": "0.5",
             "speed": "0.5"
@@ -33,64 +36,9 @@ current_values = {
 }
 
 
-class PyrameWorker(QObject):
-    finished = Signal()
-    progress = Signal(int)
-
-    def __init__(self, connected_widget=None):
-        super().__init__()
-        self.widget = connected_widget
-        print('called')
-
-    def run(self):
-        """Call Pyrame code"""
-        #for i in range(5):
-        #    print(i)
-        #    sleep(1)
-            #self.progress.emit(i + 1)
-        #self.connected_widget.close()
-        print("let emit something")
-        self.finished.emit()
-
-
-class CustomDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.setWindowTitle("HELLO!")
-
-        QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-
-        self.buttonBox = QDialogButtonBox(QBtn)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
-
-        self.layout = QVBoxLayout()
-        message = QLabel("Something happened, is that OK?")
-        self.layout.addWidget(message)
-        self.layout.addWidget(self.buttonBox)
-        self.setLayout(self.layout)
-
-class AutoCloseDialog(QMessageBox):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.setWindowTitle("Information")
-
-        QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-
-        self.buttonBox = QDialogButtonBox(QBtn)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
-
-        self.layout = QVBoxLayout()
-        message = QLabel("Something happened, is that OK?")
-        self.layout.addWidget(message)
-        self.layout.addWidget(self.buttonBox)
-        self.setLayout(self.layout)
-
-
 class MainWindow(QMainWindow,Ui_MainWindow):
+    AXIS_3D = ["x", "y", "z"]
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
@@ -98,26 +46,37 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.current_values = current_values
         self.setCurrentValues()
 
-
-        # connect
+        # connect button to function
         self.x_m.clicked.connect(self.move("x", "m"))
         self.x_p.clicked.connect(self.move("x", "p"))
         self.y_m.clicked.connect(self.move("y", "m"))
         self.y_p.clicked.connect(self.move("y", "p"))
         self.z_m.clicked.connect(self.move("z", "m"))
         self.z_p.clicked.connect(self.move("z", "p"))
+        self.set_origin.clicked.connect(self.setOrigin)
+        self.goto_origin.clicked.connect(self.gotoOrigin)
+        self.home.clicked.connect(self.homing)
+        self.add_current_position.clicked.connect(self.addCurrentPosition)
+        self.delete_position.clicked.connect(self.deletePosition)
+        self.create_volume.clicked.connect(self.createVolume)
+        self.create_path.clicked.connect(self.createPath)
+        self.start_scan.clicked.connect(self.scan)
 
+    def callPyrame(self,pyrame_func,*args):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        time.sleep(10)
+        if pyrame_func == "set_origin_gaussbench":
+            val = "0.5,0.5,0.5"
+        else:
+            val = "1.0,2.0,3.0;1.0,2.0,3.0"
+
+        QApplication.restoreOverrideCursor()
+        return 1, val
 
     def setCurrentValues(self):
         for axis, values in current_values.items():
             for param_name, param_value in values.items():
                 getattr(self, "%s_%s" % (axis, param_name)).setText(param_value)
-
-    def closedlg(self):
-        time.sleep(10)
-        print(" closedlg")
-        self.dlg.close()
-
 
     def move(self, axis, dir):
         """
@@ -132,57 +91,49 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             acc = getattr(self, "%s_acc" % axis).text()
             speed = getattr(self, "%s_speed" % axis).text()
 
-
-
-            self.dlg = AutoCloseDialog(self)
-            #print(" start time")
-            #self.timer = QTimer()
-            #self.timer.setSingleShot(True)
-            #self.timer.setInterval(0)
-            #self.timer.timeout.connect(self.closedlg)
-            #self.timer.start(10)
-
-
-
-            self.thread = QThread()
-            # Step 3: Create a worker object
-            self.worker = PyrameWorker(self.dlg)
-            # Step 4: Move worker to the thread
-            self.worker.moveToThread(self.thread)
-            # Step 5: Connect signals and slots
-            self.thread.started.connect(self.worker.run)
-            self.worker.finished.connect(self.thread.quit)
-            self.worker.finished.connect(self.worker.deleteLater)
-            self.thread.finished.connect(self.thread.deleteLater)
-            #self.worker.progress.connect(self.reportProgress)
-            # Step 6: Start the thread
-            self.thread.start()
-
-
-            print("start dialog")
-            if self.dlg.exec():
-                print("Success!")
-            else:
-                print("Cancel!")
-
-
             # call pyrame move
-            retcode,res = 0,1.0
-            s = float(step)
-            if dir == "m":
-                s*= -1
-
-            self.current_values[axis]["global"] = str(float(self.current_values[axis]["global"]) + s)
-            self.current_values[axis]["local"] = str(float(self.current_values[axis]["local"]) + s)
+            retcode,res = self.callPyrame("joystick_gaussbench", axis, dir, step,
+                                            speed, speed, speed,
+                                            acc,acc, acc)
+            if retcode == 1:
+                local_p, global_p = res.split(";")
+                for a, l, g in zip(self.AXIS_3D, local_p.split(","), global_p.split(",")):
+                    self.current_values[a]["local"] = l
+                    self.current_values[a]["global"] = g
 
             # update the value in the interface
-            print(dir, axis,step,acc,speed,self.current_values[axis]["global"])
             self.setCurrentValues()
 
         return f
 
+    def setOrigin(self):
+        retcode, res = self.callPyrame("define_origin_gaussbench")
+        if retcode == 1:
+            for a, p in zip(self.AXIS_3D, res.split(",")):
+                    self.current_values[a]["origin"] = p
 
+        self.setCurrentValues()
 
+    def gotoOrigin(self):
+        pass
+
+    def homing(self):
+        pass
+
+    def addCurrentPosition(self):
+        pass
+
+    def deletePosition(self):
+        pass
+
+    def createVolume(self):
+        pass
+
+    def createPath(self):
+        pass
+
+    def scan(self):
+        pass
 
 
 if __name__ == "__main__":

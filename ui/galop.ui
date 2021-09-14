@@ -14,501 +14,765 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout_3">
-    <item row="0" column="0">
-     <layout class="QVBoxLayout" name="verticalLayout">
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QFrame" name="frame">
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>800</width>
-            <height>300</height>
-           </size>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Raised</enum>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_2">
-           <item row="0" column="0">
-            <layout class="QGridLayout" name="gridLayout">
-             <item row="0" column="0" colspan="2">
-              <widget class="QLabel" name="label">
-               <property name="font">
-                <font>
-                 <pointsize>12</pointsize>
-                 <italic>true</italic>
-                 <bold>true</bold>
-                </font>
-               </property>
-               <property name="text">
-                <string>Translation</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>Axis</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLabel" name="label_3">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Global (mm)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="2">
-              <widget class="QLabel" name="label_4">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Local (mm)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="4">
-              <widget class="QLabel" name="label_5">
-               <property name="text">
-                <string>Step (mm)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="6">
-              <widget class="QLabel" name="label_6">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Acc (mms&lt;sup&gt;-2&lt;/sup&gt;)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="7">
-              <widget class="QLabel" name="label_7">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Speed (mm/s)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_8">
-               <property name="maximumSize">
-                <size>
-                 <width>30</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>X</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QLineEdit" name="x_global">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="2">
-              <widget class="QLineEdit" name="x_local">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="3">
-              <widget class="QPushButton" name="x_m">
-               <property name="maximumSize">
-                <size>
-                 <width>40</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>-</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="4">
-              <widget class="QLineEdit" name="x_step">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="5">
-              <widget class="QPushButton" name="x_p">
-               <property name="maximumSize">
-                <size>
-                 <width>40</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>+</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="6">
-              <widget class="QLineEdit" name="x_acc">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="7">
-              <widget class="QLineEdit" name="x_speed">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_10">
-               <property name="maximumSize">
-                <size>
-                 <width>30</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Y</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QLineEdit" name="y_global">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="2">
-              <widget class="QLineEdit" name="y_local">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="3">
-              <widget class="QPushButton" name="y_m">
-               <property name="maximumSize">
-                <size>
-                 <width>40</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>-</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="4">
-              <widget class="QLineEdit" name="y_step">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="5">
-              <widget class="QPushButton" name="y_p">
-               <property name="maximumSize">
-                <size>
-                 <width>40</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>+</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="6">
-              <widget class="QLineEdit" name="y_acc">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="7">
-              <widget class="QLineEdit" name="y_speed">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_11">
-               <property name="maximumSize">
-                <size>
-                 <width>30</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Z</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QLineEdit" name="z_global">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="2">
-              <widget class="QLineEdit" name="z_local">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="3">
-              <widget class="QPushButton" name="z_m">
-               <property name="maximumSize">
-                <size>
-                 <width>40</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>-</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="4">
-              <widget class="QLineEdit" name="z_step">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="5">
-              <widget class="QPushButton" name="z_p">
-               <property name="maximumSize">
-                <size>
-                 <width>40</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>+</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="6">
-              <widget class="QLineEdit" name="z_acc">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="7">
-              <widget class="QLineEdit" name="z_speed">
-               <property name="maximumSize">
-                <size>
-                 <width>90</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="4">
-              <spacer name="verticalSpacer">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>40</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item row="6" column="1">
-              <widget class="QPushButton" name="set_origin">
-               <property name="text">
-                <string>Set Origin</string>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="2">
-              <widget class="QPushButton" name="goto_origin">
-               <property name="text">
-                <string>Goto Origin</string>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="7">
-              <widget class="QPushButton" name="home">
-               <property name="text">
-                <string>Home</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QTabWidget" name="tabWidget">
-        <property name="currentIndex">
-         <number>0</number>
+   <widget class="QTabWidget" name="tabWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>237</y>
+      <width>1131</width>
+      <height>391</height>
+     </rect>
+    </property>
+    <property name="currentIndex">
+     <number>0</number>
+    </property>
+    <widget class="QWidget" name="tab">
+     <attribute name="title">
+      <string>3D scan</string>
+     </attribute>
+     <widget class="QPushButton" name="add_current_position">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>141</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Add Current position</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="min_extrusion">
+      <property name="geometry">
+       <rect>
+        <x>40</x>
+        <y>240</y>
+        <width>81</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_9">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>240</y>
+        <width>57</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Min.</string>
+      </property>
+     </widget>
+     <widget class="QListWidget" name="points_3d">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>60</y>
+        <width>256</width>
+        <height>161</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="delete_position">
+      <property name="geometry">
+       <rect>
+        <x>170</x>
+        <y>20</y>
+        <width>80</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Delete </string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_12">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>240</y>
+        <width>57</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Max</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="max_extrusion">
+      <property name="geometry">
+       <rect>
+        <x>200</x>
+        <y>240</y>
+        <width>71</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="create_volume">
+      <property name="geometry">
+       <rect>
+        <x>339</x>
+        <y>130</y>
+        <width>111</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Create Volume </string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="volume_choice">
+      <property name="geometry">
+       <rect>
+        <x>570</x>
+        <y>50</y>
+        <width>79</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_13">
+      <property name="geometry">
+       <rect>
+        <x>490</x>
+        <y>100</y>
+        <width>71</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Path order</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="path">
+      <property name="geometry">
+       <rect>
+        <x>570</x>
+        <y>100</y>
+        <width>79</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="scan_x_step">
+      <property name="geometry">
+       <rect>
+        <x>570</x>
+        <y>130</y>
+        <width>113</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="scan_y_step">
+      <property name="geometry">
+       <rect>
+        <x>570</x>
+        <y>170</y>
+        <width>113</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="scan_z_step">
+      <property name="geometry">
+       <rect>
+        <x>570</x>
+        <y>210</y>
+        <width>113</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_14">
+      <property name="geometry">
+       <rect>
+        <x>500</x>
+        <y>130</y>
+        <width>57</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>step x</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_15">
+      <property name="geometry">
+       <rect>
+        <x>490</x>
+        <y>170</y>
+        <width>57</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>step y</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_16">
+      <property name="geometry">
+       <rect>
+        <x>490</x>
+        <y>220</y>
+        <width>57</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>step z</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_17">
+      <property name="geometry">
+       <rect>
+        <x>490</x>
+        <y>50</y>
+        <width>57</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Volume</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="create_path">
+      <property name="geometry">
+       <rect>
+        <x>790</x>
+        <y>130</y>
+        <width>80</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Create Path</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_18">
+      <property name="geometry">
+       <rect>
+        <x>920</x>
+        <y>130</y>
+        <width>57</width>
+        <height>14</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Path</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="path_choice">
+      <property name="geometry">
+       <rect>
+        <x>970</x>
+        <y>130</y>
+        <width>79</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="start_scan">
+      <property name="geometry">
+       <rect>
+        <x>970</x>
+        <y>220</y>
+        <width>80</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Start scan</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tab_2">
+     <attribute name="title">
+      <string>1D Scan</string>
+     </attribute>
+    </widget>
+   </widget>
+   <widget class="QFrame" name="frame">
+    <property name="geometry">
+     <rect>
+      <x>11</x>
+      <y>11</y>
+      <width>800</width>
+      <height>219</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>0</width>
+      <height>0</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>800</width>
+      <height>300</height>
+     </size>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <widget class="QWidget" name="">
+     <property name="geometry">
+      <rect>
+       <x>12</x>
+       <y>12</y>
+       <width>741</width>
+       <height>199</height>
+      </rect>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0" colspan="2">
+       <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+          <italic>true</italic>
+          <bold>true</bold>
+         </font>
         </property>
-        <widget class="QWidget" name="tab">
-         <attribute name="title">
-          <string>3D scan</string>
-         </attribute>
-         <widget class="QPushButton" name="pushButton_2">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>20</y>
-            <width>141</width>
-            <height>22</height>
-           </rect>
-          </property>
-          <property name="text">
-           <string>Get Current position</string>
-          </property>
-         </widget>
-         <widget class="QTextEdit" name="textEdit">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>60</y>
-            <width>141</width>
-            <height>141</height>
-           </rect>
-          </property>
-         </widget>
-         <widget class="QLineEdit" name="lineEdit">
-          <property name="geometry">
-           <rect>
-            <x>80</x>
-            <y>230</y>
-            <width>113</width>
-            <height>22</height>
-           </rect>
-          </property>
-         </widget>
-         <widget class="QLabel" name="label_9">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>230</y>
-            <width>57</width>
-            <height>14</height>
-           </rect>
-          </property>
-          <property name="text">
-           <string>TextLabel</string>
-          </property>
-         </widget>
-        </widget>
-        <widget class="QWidget" name="tab_2">
-         <attribute name="title">
-          <string>1D Scan</string>
-         </attribute>
-        </widget>
+        <property name="text">
+         <string>Translation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Axis</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="label_3">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Global (mm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="label_4">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Local (mm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLabel" name="label_19">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Origin (mm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="5">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Step (mm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="7">
+       <widget class="QLabel" name="label_6">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Acc (mms&lt;sup&gt;-2&lt;/sup&gt;)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="8">
+       <widget class="QLabel" name="label_7">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Speed (mm/s)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>X</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="x_global">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QLineEdit" name="x_local">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QLineEdit" name="x_origin">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="4">
+       <widget class="QPushButton" name="x_m">
+        <property name="maximumSize">
+         <size>
+          <width>40</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="5">
+       <widget class="QLineEdit" name="x_step">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="6">
+       <widget class="QPushButton" name="x_p">
+        <property name="maximumSize">
+         <size>
+          <width>40</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="7">
+       <widget class="QLineEdit" name="x_acc">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="8">
+       <widget class="QLineEdit" name="x_speed">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Y</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLineEdit" name="y_global">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QLineEdit" name="y_local">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="3">
+       <widget class="QLineEdit" name="y_origin">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4">
+       <widget class="QPushButton" name="y_m">
+        <property name="maximumSize">
+         <size>
+          <width>40</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="5">
+       <widget class="QLineEdit" name="y_step">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="6">
+       <widget class="QPushButton" name="y_p">
+        <property name="maximumSize">
+         <size>
+          <width>40</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="7">
+       <widget class="QLineEdit" name="y_acc">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="8">
+       <widget class="QLineEdit" name="y_speed">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_11">
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Z</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLineEdit" name="z_global">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QLineEdit" name="z_local">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="3">
+       <widget class="QLineEdit" name="z_origin">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="4">
+       <widget class="QPushButton" name="z_m">
+        <property name="maximumSize">
+         <size>
+          <width>40</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="5">
+       <widget class="QLineEdit" name="z_step">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="6">
+       <widget class="QPushButton" name="z_p">
+        <property name="maximumSize">
+         <size>
+          <width>40</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="7">
+       <widget class="QLineEdit" name="z_acc">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="8">
+       <widget class="QLineEdit" name="z_speed">
+        <property name="maximumSize">
+         <size>
+          <width>90</width>
+          <height>16777215</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="9">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="5" column="3">
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="6" column="1">
+       <widget class="QPushButton" name="set_origin">
+        <property name="text">
+         <string>Set Origin</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="2">
+       <widget class="QPushButton" name="goto_origin">
+        <property name="text">
+         <string>Goto Origin</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="6" colspan="2">
+       <widget class="QPushButton" name="home">
+        <property name="text">
+         <string>Home</string>
+        </property>
        </widget>
       </item>
      </layout>
-    </item>
-   </layout>
+    </widget>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
