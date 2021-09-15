@@ -5,6 +5,27 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonB
 from PySide6.QtCore import Qt, QObject, Signal
 from galop_ui import Ui_MainWindow
 
+
+class gotoOrigin_Dialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setWindowTitle("HELLO!")
+
+        QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+
+        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.layout = QVBoxLayout()
+        message = QLabel("Something happened, is that OK?")
+        self.layout.addWidget(message)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+        self.scan_order = "XYZ"
+
 current_values = {
     "x":
         {
@@ -62,6 +83,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.create_path.clicked.connect(self.createPath)
         self.start_scan.clicked.connect(self.scan)
 
+
+
     def callPyrame(self,pyrame_func,*args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         time.sleep(10)
@@ -110,21 +133,32 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         retcode, res = self.callPyrame("define_origin_gaussbench")
         if retcode == 1:
             for a, p in zip(self.AXIS_3D, res.split(",")):
-                    self.current_values[a]["origin"] = p
+                self.current_values[a]["origin"] = p
 
         self.setCurrentValues()
 
     def gotoOrigin(self):
-        pass
+        dlg = gotoOrigin_Dialog()
+        if dlg.exec_():
+            print("Done", dlg.scan_order)
 
     def homing(self):
         pass
 
     def addCurrentPosition(self):
-        pass
+        # set the local position in the points_3D widget
+
+        coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
+
+        if not self.points_3d.findItems(coord, Qt.MatchExactly):
+            self.points_3d.addItem(coord)
+
+
 
     def deletePosition(self):
-        pass
+        for i in self.points_3d.selectedItems():
+            self.points_3d.takeItem(self.points_3d.row(i))
+
 
     def createVolume(self):
         pass
