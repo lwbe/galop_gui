@@ -62,6 +62,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         super(MainWindow, self).__init__()
         self.setupUi(self)
 
+        self.GLOBAL_POS = {"x": 0.0, "y": 0.0, "z": 0.0}
+
         self.current_values = current_values
         self.setInitialValues()
 
@@ -77,12 +79,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         [self.path.addItem(i) for i in self.PATH_ORDER]
 
         # connect button to function
-        self.x_m.clicked.connect(self.move("x", "m"))
-        self.x_p.clicked.connect(self.move("x", "p"))
-        self.y_m.clicked.connect(self.move("y", "m"))
-        self.y_p.clicked.connect(self.move("y", "p"))
-        self.z_m.clicked.connect(self.move("z", "m"))
-        self.z_p.clicked.connect(self.move("z", "p"))
+        self.x_m.clicked.connect(self.move)
+        self.x_p.clicked.connect(self.move)
+        self.y_m.clicked.connect(self.move)
+        self.y_p.clicked.connect(self.move)
+        self.z_m.clicked.connect(self.move)
+        self.z_p.clicked.connect(self.move)
         self.set_origin.clicked.connect(self.setOrigin)
         self.goto_origin.clicked.connect(self.gotoOrigin)
         self.home.clicked.connect(self.homing)
@@ -91,6 +93,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.create_volume.clicked.connect(self.createVolume)
         self.create_path.clicked.connect(self.createPath)
         self.start_scan.clicked.connect(self.scan)
+
 
     def check_state(self, *args, **kwargs):
         sender = self.sender()
@@ -106,62 +109,57 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def callPyrame(self,pyrame_func,*args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        time.sleep(10)
-        if pyrame_func == "set_origin_gaussbench":
-            val = "0.5,0.5,0.5"
-        else:
-            val = "1.0,2.0,3.0;1.0,2.0,3.0"
+        #time.sleep(1)
+        retcode = 0
+        val = "NO VALUE"
+        if pyrame_func == "joystick_gaussbench":
+            axis, direction, step, acc, speed = args
+            print("axis",axis)
+            d = 1
+            if direction == "m":
+                d = -1.
+            self.GLOBAL_POS[axis] += d*float(step)
+            retcode = 1
+            val = ",".join([str(self.GLOBAL_POS[i]) for i in self.AXIS_3D ])
+
         QApplication.restoreOverrideCursor()
-
-        retcode, val = 0, "err msg"
-        if retcode == 0:
-            pass
-
         return retcode, val
 
     def setInitialValues(self):
         for param_name, param_value in current_values.items():
             getattr(self, param_name).setText(param_value)
+            if param_name == "x_global":
+                self.GLOBAL_POS['x'] = float(param_value)
 
-    def move(self, axis, dir):
-        """
-        create move function
-        :param dir:
-        :param axis:
-        :return:
-        """
-        def f():
-            # get the params from the interface
-            step = getattr(self, "%s_step" % axis).text()
-            acc = getattr(self, "%s_acc" % axis).text()
-            speed = getattr(self, "%s_speed" % axis).text()
+    def move(self):
 
-            # call pyrame move
-            retcode, res = self.callPyrame("joystick_gaussbench", axis, dir,
-                                           step, acc, speed)
+        # extract axis and direction from the button name
+        axis, direction = self.sender().objectName().split("_")
 
-            if retcode == 1:
-                local_p, global_p = res.split(";")
-                for a, l, g in zip(self.AXIS_3D, local_p.split(","), global_p.split(",")):
-                    self.current_values[a]["global"] = g
+        step = getattr(self, "%s_step" % axis).text()
+        acc = getattr(self, "%s_acc" % axis).text()
+        speed = getattr(self, "%s_speed" % axis).text()
 
-            # update the value in the interface
-            self.setCurrentValues()
+        retcode, res = self.callPyrame("joystick_gaussbench", axis, direction, step, acc, speed)
 
-        return f
+        if retcode == 1:
+            for a, g in zip(self.AXIS_3D, res.split(",")):
+                getattr(self, "%s_global" % a).setText(g)
+                o = float(getattr(self, "%s_origin" % a).text())
+                getattr(self, "%s_local" % a).setText(str(float(g)-o))
 
     def setOrigin(self):
-        retcode, res = self.callPyrame("set_origin_gaussbench")
-        if retcode == 1:
-            for a, p in zip(self.AXIS_3D, res.split(",")):
-                self.current_values["%s_origin" % a] = p
-
-        self.setCurrentValues()
+        for axis in self.AXIS_3D:
+            g = getattr(self, "%s_global" % axis).text()
+            getattr(self, "%s_origin" % axis).setText(g)
+            getattr(self, "%s_local" % axis).setText("0.")
 
     def gotoOrigin(self):
         dlg = gotoOrigin_Dialog()
         if dlg.exec_():
             print("Done", dlg.scan_order)
+            for a in dlg.scan_order:
+                getattr(self, "%s_global" % a).setText(getattr(self, "%s_origin" % a).text())
 
     def homing(self):
         pass
