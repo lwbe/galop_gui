@@ -1,9 +1,9 @@
 #! coding: utf-8
 
 import sys,time
-from PySide6.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QMessageBox
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator,QValidator
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QMessageBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QDoubleValidator,QValidator
 from galop_ui import Ui_MainWindow
 
 
@@ -107,7 +107,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             color = '#f6989d' # red
         sender.setStyleSheet('QLineEdit { background-color: %s }' % color)
 
-    def callPyrame(self,pyrame_func,*args):
+    def callPyrame(self, pyrame_func, *args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         #time.sleep(1)
         retcode = 0
