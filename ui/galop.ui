@@ -56,29 +56,6 @@ QGroupBox::title {
        <string>Add Current position</string>
       </property>
      </widget>
-     <widget class="QLineEdit" name="min_extrusion">
-      <property name="geometry">
-       <rect>
-        <x>40</x>
-        <y>240</y>
-        <width>81</width>
-        <height>22</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_9">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>240</y>
-        <width>57</width>
-        <height>14</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Min.</string>
-      </property>
-     </widget>
      <widget class="QListWidget" name="points_3d">
       <property name="geometry">
        <rect>
@@ -100,29 +77,6 @@ QGroupBox::title {
       </property>
       <property name="text">
        <string>Delete </string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_12">
-      <property name="geometry">
-       <rect>
-        <x>140</x>
-        <y>240</y>
-        <width>57</width>
-        <height>14</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Max</string>
-      </property>
-     </widget>
-     <widget class="QLineEdit" name="max_extrusion">
-      <property name="geometry">
-       <rect>
-        <x>200</x>
-        <y>240</y>
-        <width>71</width>
-        <height>22</height>
-       </rect>
       </property>
      </widget>
      <widget class="QPushButton" name="create_volume">
@@ -301,6 +255,103 @@ QGroupBox::title {
       <property name="text">
        <string>Start scan</string>
       </property>
+     </widget>
+     <widget class="QGroupBox" name="groupBox_2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>230</y>
+        <width>261</width>
+        <height>80</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Extrusion</string>
+      </property>
+      <widget class="QLabel" name="label_9">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>50</y>
+         <width>57</width>
+         <height>14</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Min.</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="min_extrusion">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>40</y>
+         <width>81</width>
+         <height>22</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_12">
+       <property name="geometry">
+        <rect>
+         <x>130</x>
+         <y>40</y>
+         <width>57</width>
+         <height>14</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Max</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="max_extrusion">
+       <property name="geometry">
+        <rect>
+         <x>180</x>
+         <y>40</y>
+         <width>71</width>
+         <height>22</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>20</y>
+         <width>57</width>
+         <height>14</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Axis</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="extrusion_axis">
+       <property name="geometry">
+        <rect>
+         <x>90</x>
+         <y>10</y>
+         <width>79</width>
+         <height>22</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>Z</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Y</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>X</string>
+        </property>
+       </item>
+      </widget>
      </widget>
     </widget>
     <widget class="QWidget" name="tab_2">
@@ -761,11 +812,37 @@ QGroupBox::title {
      <x>0</x>
      <y>0</y>
      <width>1448</width>
-     <height>20</height>
+     <height>19</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionLoad_scan_param"/>
+    <addaction name="actionSave_scan_param"/>
+    <addaction name="separator"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionLoad_scan_param">
+   <property name="text">
+    <string>Load scan param</string>
+   </property>
+  </action>
+  <action name="actionSave_scan_param">
+   <property name="text">
+    <string>Save scan param</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

@@ -1,7 +1,7 @@
 #! coding: utf-8
 
 import sys,time
-from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QMessageBox, QFileDialog
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator,QValidator
 from galop_ui import Ui_MainWindow
@@ -78,6 +78,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         [self.path.addItem(i) for i in self.PATH_ORDER]
 
+        # Menu bindings
+        self.actionLoad_scan_param.triggered.connect(self.loadScanParam)
+        self.actionSave_scan_param.triggered.connect(self.saveScanParam)
+        self.actionQuit.triggered.connect(self.exitApplication)
+
         # connect button to function
         self.x_m.clicked.connect(self.move)
         self.x_p.clicked.connect(self.move)
@@ -109,23 +114,46 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def callPyrame(self, pyrame_func, *args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        #time.sleep(1)
         retcode = 0
-        val = "NO VALUE"
-        if pyrame_func == "joystick_gaussbench":
-            axis, direction, step, acc, speed = args
-            print("axis",axis)
-            d = 1
-            if direction == "m":
-                d = -1.
-            self.GLOBAL_POS[axis] += d*float(step)
-            retcode = 1
-            val = ",".join([str(self.GLOBAL_POS[i]) for i in self.AXIS_3D ])
-
         QApplication.restoreOverrideCursor()
         return retcode, val
 
+    def loadScanParam(self):
+        name = QFileDialog.getOpenFileName(self,"Load scan file")
+
+    def saveScanParam(self):
+        name = QFileDialog.getSaveFileName(self, 'Save scan file')
+        if name[0] != "":
+            l = np.min([len(self.x), len(self.y), len(self.y1)])
+            if l == 0:
+                dlg = QMessageBox.about(self, "Save Data", "No data to save")
+                return
+            file = open(name[0], 'w')
+            file.write("# t(s)  P(mbar) Pump on (1) 0 (off)")
+            for i in range(l):
+                f.write("%e %e %e\n" % (self.x[i], self.y[i], self.y1[i]))
+            file.close()
+
+
+
+    def exitApplication(self):
+        """
+        Clean up on exit
+        """
+        button = QMessageBox.question(self,
+                                      "Quit",
+                                      "Are you sure you want to quit?",
+                                      buttons=QMessageBox.Yes | QMessageBox.No,
+                                      defaultButton=QMessageBox.Yes,
+                                      )
+
+        if button == QMessageBox.Yes:
+            # finally close the code.
+            self.close()
+
     def setInitialValues(self):
+
+        # we only know a position, an origin a step an acc a speed
         for param_name, param_value in current_values.items():
             getattr(self, param_name).setText(param_value)
             if param_name == "x_global":
@@ -180,7 +208,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
 
     def createVolume(self):
-        pass
+        print(self.extrusion_axis.currentText())
 
     def createPath(self):
         pass
