@@ -78,16 +78,17 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         #self.current_values = current_values
         print([i.objectName() for i in self.findChildren(QLineEdit)])
-        #self.initPyrameModules()
-        self.setInitialValues()
+        self.initPyrameModules()
+        #self.setInitialValues()
 
         # setting QDoubleValidator for all QLineEdit widgets
         # beware QDoubleValidator depend on locale
         # see https://snorfalorpagus.net/blog/2014/08/09/validating-user-input-in-pyqt4-using-qvalidator/
         double_validator = QDoubleValidator()
         for i in self.findChildren(QLineEdit):
-            w = getattr(self, i)
+            w = getattr(self, i.objectName())
             w.setValidator(double_validator)
+            w.setText("1.0")
             w.textChanged.connect(self.check_state)
             w.textChanged.emit(w.text())
 
@@ -162,67 +163,40 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                     },
             },
             "paths": {
-                "order": ["init_space"],
-                "init_space": ["space_01", "axis_x", "axis_y", "axis_z", "0.1", "0.1", "0.1"]
+                "space_1":{
+                    "init_order": ["init_space"],
+                    "deinit_order": ["deinit_space"],
+                    "init_space": ["axis_x", "axis_y", "axis_z", "0.1", "0.1", "0.1"]
+                }
             }
         }
         self.module_port = {}
-        for module, values in pyrame_modules_init.items():
-            self.module_port[module]=bindpyrame.get_port(module.upper())
+        for module, values in self.pyrame_modules_init.items():
+            self.module_port[module] = int(bindpyrame.get_port(module.upper()))
             for uid, params in values.items():
+                print(module,self.module_port[module],uid,params)
                 # we usually have to init first and then config unless it is explicitly different
-                order = params.get('order', ["init", "config"])
+                order = params.get('init_order', ["init", "config"])
                 if order:
                     for function in order:
-                        retcode, res = self.call_pyrame(
+                        retcode, res = self.callPyrame(
                             "%s@%s" % (function,module),
                             uid,
-                            params[function]
+                            *params[function]
                         )
         return
-
-
-        bindpyrame.sendcmd("localhost",9300,"init_motion","axis_x","th_apt(model=LTS300,bus=serial(serialnum=45839057))")
-        bindpyrame.sendcmd("localhost",9300,"config_motion","axis_x","300","0")
-        # should become something like
-        #
-
-
-        bindpyrame.sendcmd("localhost",9300,"init_motion","axis_y","th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)")
-        bindpyrame.sendcmd("localhost",9300,"config_motion","axis_y","50","0")
-
-        bindpyrame.sendcmd("localhost",9300,"init_motion","axis_z","th_apt(model=HSLTS300,bus=serial(serialnum=45897070))")
-        bindpyrame.sendcmd("localhost",9300,"config_motion","axis_z","300","0")
-
-
-        bindpyrame.sendcmd("localhost",9700,"init_multimeter","gaussmeter","ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)")
-        bindpyrame.sendcmd("localhost",9700,"config_multimeter","gaussmeter")
-
-        # init space system
-        bindpyrame.sendcmd("localhost",9350,"init_space_paths","space_01","axis_x","axis_y","axis_z","0.1","0.1","0.1")
 
     def deinitPyrameModules(self):
         # we inval and deinit the modules
         for module, values in self.pyrame_modules_init.items():
             for uid, params in values.items():
-                for function in ["inval","deinit"]:
-                         retcode, res = self.call_pyrame(
-                            "%s@%s" % (function, module),
-                            uid
+                order = params.get('deinit_order', ["inval","deinit"])
+                for function in order:
+                         retcode, res = self.callPyrame(
+                             "%s@%s" % (function, module),
+                             uid
                          )
-        return
-        bindpyrame.sendcmd("localhost", 9300,"inval_motion","axis_x")
-        bindpyrame.sendcmd("localhost", 9300,"deinit_motion","axis_x")
-        bindpyrame.sendcmd("localhost", 9300,"inval_motion","axis_y")
-        bindpyrame.sendcmd("localhost", 9300,"deinit_motion","axis_y")
-        bindpyrame.sendcmd("localhost", 9300,"inval_motion","axis_z")
-        bindpyrame.sendcmd("localhost", 9300,"deinit_motion","axis_z")
-        bindpyrame.sendcmd("localhost", 9700,"inval_multimeter","gaussmeter")
-        bindpyrame.sendcmd("localhost", 9700,"deinit_multimeter","gaussmeter")
-        # deinit space system
-        bindpyrame.sendcmd("localhost", 9350, "deinit_space_paths","space_01")
-
-        pass
+                         
 
     def callPyrame(self, pyrame_func, *args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -232,8 +206,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                           "%s_%s" % (function, module),
                                           *args)
         if retcode == 0:
-            # we open a pop up because of error
-            pass
+            button = QMessageBox.question(self,
+                                          "Error in callPyrame",
+                                          "%s" % res,
+                                          buttons=QMessageBox.Yes | QMessageBox.No,
+                                          defaultButton=QMessageBox.Yes,
+            )
         QApplication.restoreOverrideCursor()
         return retcode, res
 
@@ -296,8 +274,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 pos.append(getattr(self, "%s_global" % a).text())
             speed.append(getattr(self, "%s_speed" % a).text())
             acc.append(getattr(self, "%s_acc" % a).text())
-
-        retcode, res = self.callPyrame("move_space@paths","space_01",*(pos+speed+acc))
+        print(pos)
+        retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
         if retcode == 1:
             for a, g in zip(self.AXIS_3D, pos):
                 getattr(self, "%s_global" % a).setText(g)
