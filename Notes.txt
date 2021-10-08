@@ -47,3 +47,35 @@ if __name__ == "__main__":
     window.show()
 
     sys.exit(app.exec())
+
+
+
+Conda
+=====
+Installation et première configuration
+--------------------------------------
+On récupère conda sur https://docs.conda.io/en/latest/miniconda.html#linux-installers
+
+Puis on excute le fichier .sh récupéré et on accepte  les valeurs par defauts.
+
+Pour configurer l'environement sans qu'il démarre automatiquement on fait
+
+/root/miniconda3/bin conda init bash
+
+et ensuite on fait le menage dans /root/.bashrc pour ne garder que la ligne
+
+. "/root/miniconda3/etc/profile.d/conda.sh"
+
+On active l'environement aprés avoir redémarrer le shell par
+
+conda create -n galop_gui
+conda activate galop_gui
+conda install ipython
+pip install pyside6  # oui pip car pyside6 n'est pas dans conda
+
+utilisation
+-----------
+
+On active l'environement par
+
+conda activate galop_gui

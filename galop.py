@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator,QValidator
 from galop_ui import Ui_MainWindow
-import bind_pyrame
+import bindpyrame
 
 
 class gotoOrigin_Dialog(QDialog):
@@ -66,7 +66,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.GLOBAL_POS = {"x": 0.0, "y": 0.0, "z": 0.0}
 
         self.current_values = current_values
-        self.initPyrame()
+        self.initPyrameModules()
         self.setInitialValues()
 
         # init widgets
@@ -105,7 +105,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def check_state(self, *args, **kwargs):
         sender = self.sender()
         validator = sender.validator()
+       
         state = validator.validate(sender.text(), 0)[0]
+        print(sender.text(),state)
         if state == QValidator.Acceptable:
             color = '#c4df9b' # green
         elif state == QValidator.Intermediate:
@@ -140,28 +142,53 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                     },
             }
         }
+        self.module_port={
+            "motion":9300,
+            "paths":9350,
+            "multimeter":9700
+        }
+        bindpyrame.sendcmd("localhost",9300,"init_motion","axis_x","th_apt(model=LTS300,bus=serial(serialnum=45839057))")
+        bindpyrame.sendcmd("localhost",9300,"config_motion","axis_x","300","0")
 
-        for module_name in pyrame_modules_init.keys():
-            module_port = bindpyrame.get_port(module_name)
+        bindpyrame.sendcmd("localhost",9300,"init_motion","axis_y","th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)")
+        bindpyrame.sendcmd("localhost",9300,"config_motion","axis_y","50","0")
+
+        bindpyrame.sendcmd("localhost",9300,"init_motion","axis_z","th_apt(model=HSLTS300,bus=serial(serialnum=45897070))")
+        bindpyrame.sendcmd("localhost",9300,"config_motion","axis_z","300","0")
 
 
+        bindpyrame.sendcmd("localhost",9700,"init_multimeter","gaussmeter","ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)")
+        bindpyrame.sendcmd("localhost",9700,"config_multimeter","gaussmeter")
 
-        # extract the ports
-
-        # call Pyrame to init and configure
-        pass
+        # init space system
+        bindpyrame.sendcmd("localhost",9350,"init_space_paths","space_01","axis_x","axis_y","axis_z","0.1","0.1","0.1")
 
     def deinitPyrameModules(self):
         # we inval and deinit the modules
+        bindpyrame.sendcmd("localhost",9300,"inval_motion","axis_x")
+        bindpyrame.sendcmd("localhost",9300,"deinit_motion","axis_x")
+        bindpyrame.sendcmd("localhost",9300,"inval_motion","axis_y")
+        bindpyrame.sendcmd("localhost",9300,"deinit_motion","axis_y")
+        bindpyrame.sendcmd("localhost",9300,"inval_motion","axis_z")
+        bindpyrame.sendcmd("localhost",9300,"deinit_motion","axis_z")
+        bindpyrame.sendcmd("localhost",9700,"inval_multimeter","gaussmeter")
+        bindpyrame.sendcmd("localhost",9700,"deinit_multimeter","gaussmeter")
+        # deinit space system
+        bindpyrame.sendcmd("localhost",9350,"deinit_space_paths","space_01")
+
         pass
 
     def callPyrame(self, pyrame_func, *args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         function, module = pyrame_func.split("@")
+        print(function,module,args)
         retcode, res = bindpyrame.sendcmd("localhost",
-                              self.module_port[module],
-                              "%s_%s" % (function, module),
-                              *args)
+                                          self.module_port[module],
+                                          "%s_%s" % (function, module),
+                                          *args)
+        print(retcode,res)
+        retcode=1
+        res=1
         if retcode == 0:
             # we open a pop up because of error
             pass
@@ -214,18 +241,28 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         # extract axis and direction from the button name
         axis, direction = self.sender().objectName().split("_")
+        pos = []
+        speed = []
+        acc = []
+        for a in self.AXIS_3D:
+            if a==axis:
+                step = float(getattr(self, "%s_step" % a).text())
+                if direction == "m":
+                    step = -step
+                pos.append("%f" % (float(getattr(self, "%s_global" % a).text())+step))
+            else:
+                pos.append(getattr(self, "%s_global" % a).text())
+            speed.append(getattr(self, "%s_speed" % a).text())
+            acc.append(getattr(self, "%s_acc" % a).text())
 
-        step = getattr(self, "%s_step" % axis).text()
-        acc = getattr(self, "%s_acc" % axis).text()
-        speed = getattr(self, "%s_speed" % axis).text()
-
-        retcode, res = self.callPyrame("joystick_gaussbench", axis, direction, step, acc, speed)
-
+        retcode, res = self.callPyrame("move_space@paths","space_01",*(pos+speed+acc))
+        print(res)
         if retcode == 1:
-            for a, g in zip(self.AXIS_3D, res.split(",")):
+            for a, g in zip(self.AXIS_3D, pos):
                 getattr(self, "%s_global" % a).setText(g)
                 o = float(getattr(self, "%s_origin" % a).text())
                 getattr(self, "%s_local" % a).setText(str(float(g)-o))
+
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
