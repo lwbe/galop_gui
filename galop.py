@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator,QValidator
 from galop_ui import Ui_MainWindow
+import bind_pyrame
 
 
 class gotoOrigin_Dialog(QDialog):
@@ -65,6 +66,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.GLOBAL_POS = {"x": 0.0, "y": 0.0, "z": 0.0}
 
         self.current_values = current_values
+        self.initPyrame()
         self.setInitialValues()
 
         # init widgets
@@ -112,11 +114,59 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             color = '#f6989d' # red
         sender.setStyleSheet('QLineEdit { background-color: %s }' % color)
 
+    # Pyrame Stuff
+    def initPyrameModules(self):
+        # read conf file
+        pyrame_modules_list = ["motion","th_apt","bus","serial","gpib","multimeter","ls460","paths"]
+        pyrame_modules_init = {
+            "motion" : {
+                "axis_x": {
+                    "init": ["th_apt(model=LTS300,bus=serial(serialnum=45839057))"],
+                    "config": ["300","0"]
+                },
+                "axis_y": {
+                    "init": ["th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)"],
+                    "config": ["50","0"]
+                },
+                "axis_z": {
+                    "init": ["th_apt(model=HSLTS300,bus=serial(serialnum=45897070))"],
+                    "config": ["300","0"]
+                },
+            },
+            "multimeter": {
+                "gaussmeter": {
+                    "init": ["ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)"],
+                    "config": []
+                    },
+            }
+        }
+
+        for module_name in pyrame_modules_init.keys():
+            module_port = bindpyrame.get_port(module_name)
+
+
+
+        # extract the ports
+
+        # call Pyrame to init and configure
+        pass
+
+    def deinitPyrameModules(self):
+        # we inval and deinit the modules
+        pass
+
     def callPyrame(self, pyrame_func, *args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        retcode = 0
+        function, module = pyrame_func.split("@")
+        retcode, res = bindpyrame.sendcmd("localhost",
+                              self.module_port[module],
+                              "%s_%s" % (function, module),
+                              *args)
+        if retcode == 0:
+            # we open a pop up because of error
+            pass
         QApplication.restoreOverrideCursor()
-        return retcode, val
+        return retcode, res
 
     def loadScanParam(self):
         name = QFileDialog.getOpenFileName(self,"Load scan file")
@@ -134,8 +184,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 f.write("%e %e %e\n" % (self.x[i], self.y[i], self.y1[i]))
             file.close()
 
-
-
     def exitApplication(self):
         """
         Clean up on exit
@@ -150,6 +198,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if button == QMessageBox.Yes:
             # finally close the code.
             self.close()
+
+        self.deinitPyrameModules()
+
 
     def setInitialValues(self):
 

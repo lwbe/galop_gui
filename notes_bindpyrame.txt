@@ -1,0 +1,31 @@
+
+
+
+bindpyrame.get_port("MOTION")
+# -> 9300
+indpyrame.sendcmd("localhost",9300,"init_motion","axis_x","th_apt(model=LTS300,bus=serial(serialnum=45839057))")
+bindpyrame.sendcmd("localhost",9300,"config_motion","axis_x","300","0")
+
+bindpyrame.sendcmd("localhost",9300,"init_motion","axis_y","th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)")
+bindpyrame.sendcmd("localhost",9300,"config_motion","axis_y","50","0")
+
+bindpyrame.sendcmd("localhost",9300,"init_motion","axis_z","th_apt(model=HSLTS300,bus=serial(serialnum=45897070))")
+bindpyrame.sendcmd("localhost",9300,"config_motion","axis_z","300","0")
+
+
+
+bindpyrame.get_port("MULTIMETER")
+# -> 9700
+bindpyrame.sendcmd("localhost",9700,"init_multimeter","gaussmeter","ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)")
+bindpyrame.sendcmd("localhost",9700,"config_multimeter","gaussmeter")
+
+bindpyrame.get_port("PATHS")
+
+# init space system
+bindpyrame.sendcmd("localhost",9350,"init_space_paths","space_01","axis_x","axis_y","axis_z","0.1","0.1","0.1")
+
+# get position
+bindpyrame.sendcmd("localhost",9350,"get_position_paths","space_01")
+
+# move to absolute coord
+bindpyrame.sendcmd("localhost",9350,"move_space_paths","space_01","2","3","4","2","2","2","2","2","2")

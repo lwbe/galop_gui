@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config name="root">
+    <domain name="localhost">
+        <!-- MOTION -->
+        <motion name="axis_x">
+            <param name="motion_conf_string">th_apt(model=LTS300,bus=serial(serialnum=45839057))</param>
+            <param name="motion_pos_min">0</param>
+            <param name="motion_pos_max">300</param>
+        </motion>
+        <motion name="axis_y">
+            <param name="motion_conf_string">th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)</param>
+            <param name="motion_pos_min">0</param>
+            <param name="motion_pos_max">50</param>
+        </motion>
+        <motion name="axis_z">
+            <param name="motion_conf_string">th_apt(model=HSLTS300,bus=serial(serialnum=45897070))</param>
+            <param name="motion_pos_min">0</param>
+            <param name="motion_pos_max">300</param>
+        </motion>
+        <!-- Gaussmeter -->
+        <multimeter name="gauss">
+            <param name="multimeter_conf_string">ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)</param>
+        </multimeter>
+        <varmod name="varmod">
+        </varmod>
+    </domain>
+</config>
