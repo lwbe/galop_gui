@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QDialog,
     QDialogButtonBox,
-    QVBoxLayout, QHBoxLayout,
+    QVBoxLayout, QHBoxLayout,QGridLayout,
     QLabel,
     QMessageBox,
     QFileDialog,
@@ -85,33 +85,32 @@ pyrame_modules_configuration = {
 
 # Custom widget
 class orderedMovement_Dialog(QDialog):
-    def __init__(self, parent=None,message_text,order_values):
+    def __init__(self,parent=None):
         super().__init__(parent)
 
         self.setWindowTitle("Ordered move")
 
-        QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        
+        self.explanation = QLabel('')
 
+        
+        orderLabel = QLabel("&Order") 
+        self.orderCombo = QComboBox()
+        orderLabel.setBuddy(self.orderCombo)
+        self.orderCombo.currentTextChanged.connect(self.onChanged)
+
+        QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
-        label = QLabel("Order:")
-        order_combo = QComboBox(self)
-        order_combo.addTiems(order_values)
-        self.combo_layout = QHBoxLayout()
-        self.combo_layout.addWidget(label)
-        self.combo_layout.addWidget(order_combo)
-        order_combo.currentTextChanged.connect(self.onChanged)
-
-        self.layout = QVBoxLayout()
-        message = QLabel(message_text)
-        self.layout.addWidget(message)
-        self.layout.addWidget(self.combo_layout)
-        self.layout.addWidget(self.buttonBox)
+        self.layout = QGridLayout()
+        self.layout.addWidget(self.explanation,0,0,1,2)
+        self.layout.addWidget(orderLabel,1,0)
+        self.layout.addWidget(self.orderCombo,1,1)
+        self.layout.addWidget(self.buttonBox,2,0,1,2)
         self.setLayout(self.layout)
-
-
+        
         self.scan_order = ""
 
     def onChanged(self,t):
@@ -166,15 +165,23 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.y_p.clicked.connect(self.move)
         self.z_m.clicked.connect(self.move)
         self.z_p.clicked.connect(self.move)
+        
         self.set_origin.clicked.connect(self.setOrigin)
         self.goto_origin.clicked.connect(self.gotoOrigin)
         self.home.clicked.connect(self.homing)
+        
         self.add_current_position.clicked.connect(self.addCurrentPosition)
         self.delete_position.clicked.connect(self.deletePosition)
+        self.delete_position.setEnabled(False)
         self.create_volume.clicked.connect(self.createVolume)
+        self.create_volume.setEnabled(False)
         self.create_path.clicked.connect(self.createPath)
+        self.create_path.setEnabled(False)
         self.start_scan.clicked.connect(self.scan)
+        self.start_scan.setEnabled(False)
 
+        self.extrusion_axis.addItems(reversed(self.AXIS_3D))
+        
     def check_state(self, *args, **kwargs):
         sender = self.sender()
         validator = sender.validator()
@@ -331,37 +338,75 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             getattr(self, "%s_local" % axis).setText("0.0")
 
     def gotoOrigin(self):
-        dlg = gotoOrigin_Dialog("Goto origin",PATH_ORDER)
+        dlg = orderedMovement_Dialog()
+        dlg.explanation.setText("Order axis for Goto Origin")
+        dlg.orderCombo.addItems(self.PATH_ORDER)
         if dlg.exec_():
             print("Done", dlg.scan_order)
             #for a in dlg.scan_order:
             #    getattr(self, "%s_global" % a).setText(getattr(self, "%s_origin" % a).text())
 
     def homing(self):
-        speed = []
-        for a in self.AXIS_3D:
-            speed.append(getattr(self, "%s_speed" % a).text())
-        dir = ["r","r","r"]
-        retcode, res = self.callPyrame("home_motion@paths", "space_1", *(dir+speed))
-        if retcode == 1:
-            self.updatePositionWidget()
-
+        dlg = orderedMovement_Dialog()
+        dlg.explanation.setText("Order axis for Homing. Check twice !!")
+        dlg.orderCombo.addItems(self.PATH_ORDER+["x","y","z"])
+        if dlg.exec_():
+            if dlg.scan_order:
+                for d in dlg.scan_order:          
+                    retcode, res = self.callPyrame("home@motion", "axis_%s" % d,"r","1")
+                    if retcode == 1:
+                        self.updatePositionWidget()
+       
     def addCurrentPosition(self):
-        # set the local position in the points_3D widget
-        l_coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
-        g_coord = ",".join([getattr(self, "%s_global" % axis).text() for axis in self.AXIS_3D])
+        """
+        Add the current point in the list of points of interest. Note we run on local coordinates from now
+        """
+        # set the interface 
+        self.delete_position.setEnabled(True)
+        self.set_origin.setEnabled(False)
+        self.create_volume.setEnabled(True)
 
-        coord = "%s (%s)" % (l_coord, g_coord)
+        # set the local position in the points_3D widget
+        coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
         if not self.points_3d.findItems(coord, Qt.MatchExactly):
             self.points_3d.addItem(coord)
-
+            
+            
     def deletePosition(self):
         for i in self.points_3d.selectedItems():
             self.points_3d.takeItem(self.points_3d.row(i))
 
+        # we update the interface when all the points in the list are deleted
+        if self.points_3d.count() == 0:
+            self.delete_position.setEnabled(False)
+            self.create_volume.setEnabled(False)
+            self.set_origin.setEnabled(True)
+
     def createVolume(self):
-        print(self.extrusion_axis.currentText())
-        print([self.points_3d.item(i).text() for i in range(self.points_3d.count())])
+        ext_axis = self.extrusion_axis.currentText()
+        if ext_axis == "x":
+            c0,c1,c2 = 1,2,0
+        elif ext_axis == "y":
+            c0,c1,c2 = 0,2,1
+        elif ext_axis == "z":
+            c0,c1,c2 = 0,1,2
+
+        origin = []
+        for a in self.AXIS_3D:
+            origin.append(float(getattr(self, "%s_origin" % a ).text()))
+
+        axis_min = float(getattr(self, "min_extrusion").text())
+        axis_max = float(getattr(self, "max_extrusion").text())
+        new_coords = ""
+        for i in range(self.points_3d.count()):
+            coords = self.points_3d.item(i).text().split(',')
+            new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
+            
+        coords = self.points_3d.item(0).text().split(',')
+        new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
+
+        
+        print("calling init_volume@paths,space_1,prism,prism",new_coords,ext_axis,"%s" % (axis_min+origin[c2]),"%s"%(axis_max+origin[c2]))
 
 
     def createPath(self):
