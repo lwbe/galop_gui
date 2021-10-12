@@ -286,26 +286,30 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def move(self):
         # extract axis and direction from the button name
-        axis, direction = self.sender().objectName().split("_")
-        if direction not in ["m","p"]:  # we are called by the QLineEdit inut
-            axis = None
+
         pos = []
         speed = []
         acc = []
         for a in self.AXIS_3D:
-            if a == axis:
-                step = float(getattr(self, "%s_step" % a).text())
-                if direction == "m":
-                    step = -step
-                pos.append("%f" % (float(getattr(self, "%s_global" % a).text())+step))
-            else:
-                pos.append(getattr(self, "%s_global" % a).text())
+            pos.append(getattr(self, "%s_global" % a).text())
             speed.append(getattr(self, "%s_speed" % a).text())
             acc.append(getattr(self, "%s_acc" % a).text())
-        
-        retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
-        if retcode == 1:
-            self.updatePositionWidget()
+
+        axis, suffix = self.sender().objectName().split("_")
+        axis_index = self.AXIS_3D.index(axis)
+
+        if suffix == "local":
+            pos[axis_index] = "%f" % (float(getattr(self, "%s_local" % axis).text()) + float(getattr(self, "%s_origin" % a).text()))
+        elif suffix in ["p","m"]:
+            step = float(getattr(self, "%s_step" % axis).text())
+            if suffix == "m":
+                step = -step
+            pos[axis_index]= "%f" % (float(getattr(self, "%s_global" % a).text())+step))
+
+        print("in move",pos)
+        #retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
+        #if retcode == 1:
+        #    self.updatePositionWidget()
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
@@ -332,10 +336,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def addCurrentPosition(self):
         # set the local position in the points_3D widget
-        coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
-        self.coords_3d_scan.append(",".join([getattr(self, "%s_global" % axis).text() for axis in self.AXIS_3D]))
+        l_coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
+        g_coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
+
         if not self.points_3d.findItems(coord, Qt.MatchExactly):
-            self.points_3d.addItem(coord)
+            self.points_3d.addItem("%s(%s)" % (l_coord,g_coord))
 
     def deletePosition(self):
         print(self.points_3d.selectedItems())
@@ -345,6 +350,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def createVolume(self):
         print(self.extrusion_axis.currentText())
+        print([self.points_3d.item(i).text() for i in range(self.points_3d.count())])
+
 
     def createPath(self):
         pass
