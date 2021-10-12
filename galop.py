@@ -20,20 +20,23 @@ import bindpyrame
 
 # datas should be taken from a file
 initial_values = {
-        "x_step": "1.0",
-        "x_acc": "0.5",
-        "x_speed": "0.5",
-        "y_step": "1.0",
-        "y_acc": "0.5",
-        "y_speed": "0.5",
-        "z_step": "1.0",
-        "z_acc": "0.5",
-        "z_speed": "0.5",
-        "min_extrusion": "0",
-        "max_extrusion": "1",
-        "scan_x_step": "1",
-        "scan_y_step": "1",
-        "scan_z_step": "1",
+    "x_origin" : "0.0",
+    "x_step": "1.0",
+    "x_acc": "0.5",
+    "x_speed": "0.5",
+    "y_origin" : "0.0",
+    "y_step": "1.0",
+    "y_acc": "0.5",
+    "y_speed": "0.5",
+    "z_origin" : "0.0",
+    "z_step": "1.0",
+    "z_acc": "0.5",
+    "z_speed": "0.5",
+    "min_extrusion": "0",
+    "max_extrusion": "1",
+    "scan_x_step": "1",
+    "scan_y_step": "1",
+    "scan_z_step": "1",
 }
 
 pyrame_modules_list = [
@@ -113,7 +116,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.GLOBAL_POS = {"x": 0.0, "y": 0.0, "z": 0.0}
 
         self.initPyrameModules()
-        self.3d_scan_coords=[]
+        self.coords_3d_scan = []
         self.setInitialValues()
 
         # setting QDoubleValidator for all QLineEdit widgets
@@ -123,7 +126,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for i in self.findChildren(QLineEdit):
             w = getattr(self, i.objectName())
             w.setValidator(double_validator)
-            w.setText("1.0")
+            #w.setText("1.0")
             w.textChanged.connect(self.check_state)
             w.textChanged.emit(w.text())
 
@@ -257,25 +260,29 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.deinitPyrameModules()
             self.close()
 
-    def updatePositionWidget(self,position):
-        p = position.split(',')
-        for a, c in zip(self.AXIS_3D, p):
-            w = getattr(self, "%s_global")
-            w.setText(c)
-            w = getattr(self, "%s_origin")
-            o = float(w.text())
-            w = getattr(self, "%s_local")
-            w.setText(str(float(c) - o))
+    def updatePositionWidget(self):
+        retcode,res = self.callPyrame("get_position@paths","space_1")
+        if retcode == 1:
+            p = res.split(',')
+            print(p)
+            for a, c in zip(self.AXIS_3D, p):
+                w = getattr(self, "%s_global" % a )
+                print(w,c)
+                w.setText(c)
+                w = getattr(self, "%s_origin" % a)
+                o = float(w.text())
+                w = getattr(self, "%s_local" % a)
+                w.setText(str(float(c) - o))
 
     def setInitialValues(self):
-        # we only know a position, an origin a step an acc a speed
-        # global position is found in querying the device
-        retcode,res = self.callPyrame("get_position_paths","space_1")
-        if retcode == 1:
-            self.updatePositionWidget(res)
+
         # other widget params should come from a file
         for w,v in initial_values.items():
             getattr(self, w).setText(v)
+
+        # we only know a position, an origin a step an acc a speed
+        # global position is found in querying the device
+        self.updatePositionWidget()
 
     def move(self):
         # extract axis and direction from the button name
@@ -293,10 +300,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 pos.append(getattr(self, "%s_global" % a).text())
             speed.append(getattr(self, "%s_speed" % a).text())
             acc.append(getattr(self, "%s_acc" % a).text())
-        print(pos)
+        
         retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
         if retcode == 1:
-            self.updatePositionWidget(res)
+            self.updatePositionWidget()
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
@@ -312,17 +319,26 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 getattr(self, "%s_global" % a).setText(getattr(self, "%s_origin" % a).text())
 
     def homing(self):
-        pass
+        speed = []
+        for a in self.AXIS_3D:
+            speed.append(getattr(self, "%s_speed" % a).text())
+        dir=["r","r","r"]
+        retcode, res = self.callPyrame("home_motion@paths","space_1",*(dir+speed))
+        if retcode == 1:
+            self.updatePositionWidget()
+        
 
     def addCurrentPosition(self):
         # set the local position in the points_3D widget
         coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
-        self.3d_scan_coords.append(",".join([getattr(self, "%s_global" % axis).text() for axis in self.AXIS_3D]))
+        self.coords_3d_scan.append(",".join([getattr(self, "%s_global" % axis).text() for axis in self.AXIS_3D]))
         if not self.points_3d.findItems(coord, Qt.MatchExactly):
             self.points_3d.addItem(coord)
 
     def deletePosition(self):
+        print(self.points_3d.selectedItems())
         for i in self.points_3d.selectedItems():
+            print(i)
             self.points_3d.takeItem(self.points_3d.row(i))
 
     def createVolume(self):
