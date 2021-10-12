@@ -138,7 +138,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         for pos_input in ['x_local', 'y_local', 'z_local', 'x_global', 'y_global', 'z_global']:
             w = getattr(self, pos_input)
-            w.editingFinished.connect(self.moveFromInput)
+            w.editingFinished.connect(self.move)
 
         # Menu bindings
         self.actionLoad_scan_param.triggered.connect(self.loadScanParam)
@@ -160,7 +160,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.create_volume.clicked.connect(self.createVolume)
         self.create_path.clicked.connect(self.createPath)
         self.start_scan.clicked.connect(self.scan)
-
 
     def check_state(self, *args, **kwargs):
         sender = self.sender()
@@ -288,6 +287,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def move(self):
         # extract axis and direction from the button name
         axis, direction = self.sender().objectName().split("_")
+        if direction not in ["m","p"]:  # we are called by the QLineEdit inut
+            axis = None
         pos = []
         speed = []
         acc = []
@@ -305,9 +306,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
         if retcode == 1:
             self.updatePositionWidget()
-
-    def moveFromInput(self):
-        print(self.sender().objName())
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
