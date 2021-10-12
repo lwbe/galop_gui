@@ -18,7 +18,68 @@ from PyQt5.QtGui import QDoubleValidator,QValidator
 from galop_ui import Ui_MainWindow
 import bindpyrame
 
+# datas should be taken from a file
+initial_values = {
+        "x_step": "1.0",
+        "x_acc": "0.5",
+        "x_speed": "0.5",
+        "y_step": "1.0",
+        "y_acc": "0.5",
+        "y_speed": "0.5",
+        "z_step": "1.0",
+        "z_acc": "0.5",
+        "z_speed": "0.5",
+        "min_extrusion": "0",
+        "max_extrusion": "1",
+        "scan_x_step": "1",
+        "scan_y_step": "1",
+        "scan_z_step": "1",
+}
 
+pyrame_modules_list = [
+            "motion",
+            "th_apt",
+            "bus",
+            "serial",
+            "gpib",
+            "multimeter",
+            "ls460",
+            "paths"
+        ]
+
+pyrame_modules_configuration = {
+    "motion": {
+        "axis_x": {
+            "init": ["th_apt(model=LTS300,bus=serial(serialnum=45839057))"],
+            "config": ["300", "0"]
+        },
+        "axis_y": {
+            "init": ["th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)"],
+            "config": ["50", "0"]
+        },
+        "axis_z": {
+            "init": ["th_apt(model=HSLTS300,bus=serial(serialnum=45897070))"],
+            "config": ["300", "0"]
+        },
+    },
+    "multimeter": {
+        "gaussmeter": {
+            "init": [
+                "ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)"],
+            "config": []
+        },
+    },
+    "paths": {
+        "space_1": {
+            "init_order": ["init_space"],
+            "deinit_order": ["deinit_space"],
+            "init_space": ["axis_x", "axis_y", "axis_z", "0.1", "0.1", "0.1"]
+        }
+    }
+}
+
+
+# Custom widget
 class gotoOrigin_Dialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -39,33 +100,8 @@ class gotoOrigin_Dialog(QDialog):
 
         self.scan_order = "XYZ"
 
-#current_values = {
-#    "x_global": "0.0",
-#    "x_local": "0.0",
-#    "x_origin": "0.0",
-#    "x_step": "1.0",
-#    "x_acc": "0.5",
-#    "x_speed": "0.5",
-#    "y_global": "0.0",
-#    "y_local": "0.0",
-#    "y_origin": "0.0",
-#    "y_step": "1.0",
-#    "y_acc": "0.5",
-#    "y_speed": "0.5",
-#    "z_global": "0.0",
-#    "z_local": "0.0",
-#    "z_origin": "0.0",
-#    "z_step": "1.0",
-#    "z_acc": "0.5",
-#    "z_speed": "0.5",
-#    "min_extrusion": "0",
-#    "max_extrusion": "1",
-#    "scan_x_step": "1",
-#    "scan_y_step": "1",
-#    "scan_z_step": "1",
-#}
 
-
+# The main class
 class MainWindow(QMainWindow,Ui_MainWindow):
     AXIS_3D = ["x", "y", "z"]
     PATH_ORDER = ["zxy", "zyx", "yxz", "yzx", "xyz", "xzy"]
@@ -76,8 +112,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         self.GLOBAL_POS = {"x": 0.0, "y": 0.0, "z": 0.0}
 
-        #self.current_values = current_values
-        print([i.objectName() for i in self.findChildren(QLineEdit)])
         self.initPyrameModules()
         #self.setInitialValues()
 
@@ -92,7 +126,14 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             w.textChanged.connect(self.check_state)
             w.textChanged.emit(w.text())
 
+        # add some value to path widget
         [self.path.addItem(i) for i in self.PATH_ORDER]
+        for disabled_input in ['x_origin', 'y_origin', 'z_origin',
+                               'x_local', 'y_local', 'z_local',
+                               'x_global', 'y_global', 'z_global']:
+            # disable input for position to avoid errors
+            w = getattr(self, disabled_input)
+            w.setEnabled(False)
 
         # Menu bindings
         self.actionLoad_scan_param.triggered.connect(self.loadScanParam)
@@ -131,46 +172,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     # Pyrame Stuff
     def initPyrameModules(self):
         # read conf file
-        pyrame_modules_list = [
-            "motion",
-            "th_apt",
-            "bus",
-            "serial",
-            "gpib",
-            "multimeter",
-            "ls460",
-            "paths"
-        ]
-        self.pyrame_modules_init = {
-            "motion": {
-                "axis_x": {
-                    "init": ["th_apt(model=LTS300,bus=serial(serialnum=45839057))"],
-                    "config": ["300","0"]
-                },
-                "axis_y": {
-                    "init": ["th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)"],
-                    "config": ["50","0"]
-                },
-                "axis_z": {
-                    "init": ["th_apt(model=HSLTS300,bus=serial(serialnum=45897070))"],
-                    "config": ["300","0"]
-                },
-            },
-            "multimeter": {
-                "gaussmeter": {
-                    "init": ["ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)"],
-                    "config": []
-                    },
-            },
-            "paths": {
-                "space_1":{
-                    "init_order": ["init_space"],
-                    "deinit_order": ["deinit_space"],
-                    "init_space": ["axis_x", "axis_y", "axis_z", "0.1", "0.1", "0.1"]
-                }
-            }
-        }
         self.module_port = {}
+        self.pyrame_modules_init = pyrame_modules_configuration
         for module, values in self.pyrame_modules_init.items():
             self.module_port[module] = int(bindpyrame.get_port(module.upper()))
             for uid, params in values.items():
@@ -184,7 +187,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                             uid,
                             *params[function]
                         )
-        return
 
     def deinitPyrameModules(self):
         # we inval and deinit the modules
@@ -196,9 +198,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                              "%s@%s" % (function, module),
                              uid
                          )
-                         
 
     def callPyrame(self, pyrame_func, *args):
+        """
+        Function to call pyrame module and prevent user action. Inform user in case of error
+
+        :param pyrame_func: the pyrame function to call in the form function@module
+        :param args: the args of the function
+        :return: the return of the pyrame module
+        """
         QApplication.setOverrideCursor(Qt.WaitCursor)
         function, module = pyrame_func.split("@")
         retcode, res = bindpyrame.sendcmd("localhost",
@@ -206,17 +214,19 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                           "%s_%s" % (function, module),
                                           *args)
         if retcode == 0:
-            button = QMessageBox.question(self,
-                                          "Error in callPyrame",
-                                          "%s" % res,
-                                          buttons=QMessageBox.Yes | QMessageBox.No,
-                                          defaultButton=QMessageBox.Yes,
-            )
+            # see stack overflow to customize message box
+            # https://stackoverflow.com/questions/37201338/how-to-place-custom-image-onto-qmessagebox
+            # messagebox.setIconPixmap(QPixmap(":/images/image_file)) where image_file is the
+            messagenbox = QMessageBox.question(
+                self,
+                "Error in callPyrame",
+                "%s" % res,
+                buttons=QMessageBox.Ok)
         QApplication.restoreOverrideCursor()
         return retcode, res
 
     def loadScanParam(self):
-        name = QFileDialog.getOpenFileName(self,"Load scan file")
+        name = QFileDialog.getOpenFileName(self, "Load scan file")
 
     def saveScanParam(self):
         name = QFileDialog.getSaveFileName(self, 'Save scan file')
@@ -243,22 +253,30 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                       )
 
         if button == QMessageBox.Yes:
-            # finally close the code.
+            self.deinitPyrameModules()
             self.close()
 
-        self.deinitPyrameModules()
-
+    def updatePositionWidget(self,position):
+        p = position.split(',')
+        for a, c in zip(self.AXIS_3D, p):
+            w = getattr(self, "%s_global")
+            w.setText(c)
+            w = getattr(self, "%s_origin")
+            o = float(w.text())
+            w = getattr(self, "%s_local")
+            w.setText(str(float(c) - o))
 
     def setInitialValues(self):
-
         # we only know a position, an origin a step an acc a speed
-        for param_name, param_value in current_values.items():
-            getattr(self, param_name).setText(param_value)
-            if param_name == "x_global":
-                self.GLOBAL_POS['x'] = float(param_value)
+        # global position is found in querying the device
+        retcode,res = self.callPyrame("get_position_paths","space_1")
+        if retcode == 1:
+            self.updatePositionWidget(res)
+        # other widget params should come from a file
+        for w,v in initial_values.items():
+            getattr(self, w).setText(v)
 
     def move(self):
-
         # extract axis and direction from the button name
         axis, direction = self.sender().objectName().split("_")
         pos = []
@@ -277,11 +295,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         print(pos)
         retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
         if retcode == 1:
-            for a, g in zip(self.AXIS_3D, pos):
-                getattr(self, "%s_global" % a).setText(g)
-                o = float(getattr(self, "%s_origin" % a).text())
-                getattr(self, "%s_local" % a).setText(str(float(g)-o))
-
+            self.updatePositionWidget(res)
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
