@@ -278,7 +278,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def setInitialValues(self):
 
         # other widget params should come from a file
-        for w,v in initial_values.items():
+        for w, v in initial_values.items():
             getattr(self, w).setText(v)
 
         # we only know a position, an origin a step an acc a speed
@@ -307,7 +307,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.updatePositionWidget()
 
     def moveFromInput(self):
-        print(self.sender())
+        print(self.sender().objName())
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
