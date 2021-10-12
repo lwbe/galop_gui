@@ -113,7 +113,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.GLOBAL_POS = {"x": 0.0, "y": 0.0, "z": 0.0}
 
         self.initPyrameModules()
-        #self.setInitialValues()
+        self.3d_scan_coords=[]
+        self.setInitialValues()
 
         # setting QDoubleValidator for all QLineEdit widgets
         # beware QDoubleValidator depend on locale
@@ -316,7 +317,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def addCurrentPosition(self):
         # set the local position in the points_3D widget
         coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
-
+        self.3d_scan_coords.append(",".join([getattr(self, "%s_global" % axis).text() for axis in self.AXIS_3D]))
         if not self.points_3d.findItems(coord, Qt.MatchExactly):
             self.points_3d.addItem(coord)
 
