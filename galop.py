@@ -22,16 +22,16 @@ import bindpyrame
 initial_values = {
     "x_origin" : "0.0",
     "x_step": "1.0",
-    "x_acc": "0.5",
-    "x_speed": "0.5",
+    "x_acc": "2",
+    "x_speed": "2",
     "y_origin" : "0.0",
     "y_step": "1.0",
-    "y_acc": "0.5",
-    "y_speed": "0.5",
+    "y_acc": "2",
+    "y_speed": "2",
     "z_origin" : "0.0",
     "z_step": "1.0",
-    "z_acc": "0.5",
-    "z_speed": "0.5",
+    "z_acc": "2",
+    "z_speed": "2",
     "min_extrusion": "0",
     "max_extrusion": "1",
     "scan_x_step": "1",
@@ -299,17 +299,17 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         axis_index = self.AXIS_3D.index(axis)
 
         if suffix == "local":
-            pos[axis_index] = "%f" % (float(getattr(self, "%s_local" % axis).text()) + float(getattr(self, "%s_origin" % a).text()))
+            pos[axis_index] = "%f" % (float(getattr(self, "%s_local" % axis).text()) + float(getattr(self, "%s_origin" % axis).text()))
         elif suffix in ["p","m"]:
             step = float(getattr(self, "%s_step" % axis).text())
             if suffix == "m":
                 step = -step
-            pos[axis_index]= "%f" % (float(getattr(self, "%s_global" % a).text())+step))
+            pos[axis_index]= "%f" % (float(getattr(self, "%s_global" % axis).text())+step)
 
-        print("in move",pos)
-        #retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
-        #if retcode == 1:
-        #    self.updatePositionWidget()
+        print("moving to pos",pos)
+        retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
+        if retcode == 1:
+            self.updatePositionWidget()
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
@@ -337,10 +337,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def addCurrentPosition(self):
         # set the local position in the points_3D widget
         l_coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
-        g_coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
+        g_coord = ",".join([getattr(self, "%s_global" % axis).text() for axis in self.AXIS_3D])
 
+        coord = "%s (%s)" % (l_coord,g_coord)
         if not self.points_3d.findItems(coord, Qt.MatchExactly):
-            self.points_3d.addItem("%s(%s)" % (l_coord,g_coord))
+            self.points_3d.addItem(coord)
 
     def deletePosition(self):
         print(self.points_3d.selectedItems())
