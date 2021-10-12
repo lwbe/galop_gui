@@ -132,12 +132,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         # add some value to path widget
         [self.path.addItem(i) for i in self.PATH_ORDER]
-        for disabled_input in ['x_origin', 'y_origin', 'z_origin',
-                               'x_local', 'y_local', 'z_local',
-                               'x_global', 'y_global', 'z_global']:
-            # disable input for position to avoid errors
-            w = getattr(self, disabled_input)
+        for pos_input in ['x_origin', 'y_origin', 'z_origin']:
+            w = getattr(self, pos_input)
             w.setEnabled(False)
+
+        for pos_input in ['x_local', 'y_local', 'z_local', 'x_global', 'y_global', 'z_global']:
+            w = getattr(self, pos_input)
+            w.editingFinished.connect(self.moveFromInput)
 
         # Menu bindings
         self.actionLoad_scan_param.triggered.connect(self.loadScanParam)
@@ -304,6 +305,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
         if retcode == 1:
             self.updatePositionWidget()
+
+    def moveFromInput(self):
+        print(self.sender())
 
     def setOrigin(self):
         for axis in self.AXIS_3D:
