@@ -6,11 +6,12 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QDialog,
     QDialogButtonBox,
-    QVBoxLayout,
+    QVBoxLayout, QHBoxLayout,
     QLabel,
     QMessageBox,
     QFileDialog,
-    QLineEdit
+    QLineEdit,
+    QComboBox
 )
 
 from PyQt5.QtCore import Qt
@@ -83,11 +84,11 @@ pyrame_modules_configuration = {
 
 
 # Custom widget
-class gotoOrigin_Dialog(QDialog):
-    def __init__(self, parent=None):
+class orderedMovement_Dialog(QDialog):
+    def __init__(self, parent=None,message_text,order_values):
         super().__init__(parent)
 
-        self.setWindowTitle("HELLO!")
+        self.setWindowTitle("Ordered move")
 
         QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
 
@@ -95,13 +96,26 @@ class gotoOrigin_Dialog(QDialog):
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
+        label = QLabel("Order:")
+        order_combo = QComboBox(self)
+        order_combo.addTiems(order_values)
+        self.combo_layout = QHBoxLayout()
+        self.combo_layout.addWidget(label)
+        self.combo_layout.addWidget(order_combo)
+        order_combo.currentTextChanged.connect(self.onChanged)
+
         self.layout = QVBoxLayout()
-        message = QLabel("Something happened, is that OK?")
+        message = QLabel(message_text)
         self.layout.addWidget(message)
+        self.layout.addWidget(self.combo_layout)
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
 
-        self.scan_order = "XYZ"
+
+        self.scan_order = ""
+
+    def onChanged(self,t):
+        self.scan_order = t
 
 
 # The main class
@@ -267,7 +281,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             print(p)
             for a, c in zip(self.AXIS_3D, p):
                 w = getattr(self, "%s_global" % a )
-                print(w,c)
                 w.setText(c)
                 w = getattr(self, "%s_origin" % a)
                 o = float(w.text())
@@ -275,13 +288,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 w.setText(str(float(c) - o))
 
     def setInitialValues(self):
-
-        # other widget params should come from a file
+        """
+        init interface with value in a conf file or internal data and by querying the devices
+        :return:
+        """
         for w, v in initial_values.items():
             getattr(self, w).setText(v)
 
-        # we only know a position, an origin a step an acc a speed
-        # global position is found in querying the device
         self.updatePositionWidget()
 
     def move(self):
@@ -304,7 +317,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             step = float(getattr(self, "%s_step" % axis).text())
             if suffix == "m":
                 step = -step
-            pos[axis_index]= "%f" % (float(getattr(self, "%s_global" % axis).text())+step)
+            pos[axis_index] = "%f" % (float(getattr(self, "%s_global" % axis).text())+step)
 
         print("moving to pos",pos)
         retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
@@ -315,38 +328,35 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for axis in self.AXIS_3D:
             g = getattr(self, "%s_global" % axis).text()
             getattr(self, "%s_origin" % axis).setText(g)
-            getattr(self, "%s_local" % axis).setText("0.")
+            getattr(self, "%s_local" % axis).setText("0.0")
 
     def gotoOrigin(self):
-        dlg = gotoOrigin_Dialog()
+        dlg = gotoOrigin_Dialog("Goto origin",PATH_ORDER)
         if dlg.exec_():
             print("Done", dlg.scan_order)
-            for a in dlg.scan_order:
-                getattr(self, "%s_global" % a).setText(getattr(self, "%s_origin" % a).text())
+            #for a in dlg.scan_order:
+            #    getattr(self, "%s_global" % a).setText(getattr(self, "%s_origin" % a).text())
 
     def homing(self):
         speed = []
         for a in self.AXIS_3D:
             speed.append(getattr(self, "%s_speed" % a).text())
-        dir=["r","r","r"]
-        retcode, res = self.callPyrame("home_motion@paths","space_1",*(dir+speed))
+        dir = ["r","r","r"]
+        retcode, res = self.callPyrame("home_motion@paths", "space_1", *(dir+speed))
         if retcode == 1:
             self.updatePositionWidget()
-        
 
     def addCurrentPosition(self):
         # set the local position in the points_3D widget
         l_coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
         g_coord = ",".join([getattr(self, "%s_global" % axis).text() for axis in self.AXIS_3D])
 
-        coord = "%s (%s)" % (l_coord,g_coord)
+        coord = "%s (%s)" % (l_coord, g_coord)
         if not self.points_3d.findItems(coord, Qt.MatchExactly):
             self.points_3d.addItem(coord)
 
     def deletePosition(self):
-        print(self.points_3d.selectedItems())
         for i in self.points_3d.selectedItems():
-            print(i)
             self.points_3d.takeItem(self.points_3d.row(i))
 
     def createVolume(self):
