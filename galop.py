@@ -128,6 +128,7 @@ class askForName(QDialog):
             self.layout = QVBoxLayout()
             self.layout.addWidget(self.message)
             self.layout.addWidget(self.lineEditField)
+            self.layout.addWidget(self.buttonBox)
             self.setLayout(self.layout)
 
 
@@ -141,6 +142,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.setupUi(self)
 
         self.volume_nid = 0
+        self.path_nid = 0
         self.initPyrameModules()
         self.coords_3d_scan = []
         self.setInitialValues()
@@ -420,11 +422,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         # we need to ask for a name for the vol_id
         dlg = askForName()
-        dlf.message.setText("Enter volume id")
-        dlg.linEditField.setText("vol_%d" % self.volume_nid)
+        dlg.message.setText("Enter volume id")
+        dlg.lineEditField.setText("vol_%d" % self.volume_nid)
         if dlg.exec_():
             vol_id = dlg.lineEditField.text()
-            print("""retcode, res = self.callPyrame("init_volume@paths",
+            retcode, res = self.callPyrame("init_volume@paths",
                                            vol_id,
                                            "space_1",
                                            "prism",
@@ -432,17 +434,39 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                            new_coords,
                                            ext_axis,
                                            "%s" % (axis_min+origin[c2]),
-                                           "%s" % (axis_max+origin[c2]))"""
+                                           "%s" % (axis_max+origin[c2]))
             if retcode == 1:
                 self.create_path.setEnabled(True)
                 self.volume_nid += 1
+                self.volume_choice.addItem(vol_id)
 
 
 
     def createPath(self):
-        pass
+        vol_id = self.volume_choice.currentText()
+        path_order = self.path.currentText()
+        scan_x_step = self.scan_x_step.text()
+        scan_y_step = self.scan_y_step.text()
+        scan_z_step = self.scan_z_step.text()
 
+        path_id = "path_%d" % self.path_nid
+        self.volume_choice.addItem(path_id)
+        print(path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,"rr","11")
+
+        self.volume_choice.addItem(path_id)
+        self.start_scan.setEnabled(True)
+              
     def scan(self):
+        # get the values
+        #move_first_paths(path_id,s1,s2,s3,a1,a2,a3,strategy="undef"):
+
+        # measure
+
+        # create file and start writing it.
+        
+        #move_next_paths(path_id,s1,s2,s3,a1,a2,a3,strategy="undef"):
+
+
         pass
 
 if __name__ == "__main__":
