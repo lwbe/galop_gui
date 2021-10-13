@@ -85,16 +85,14 @@ pyrame_modules_configuration = {
 
 # Custom widget
 class orderedMovement_Dialog(QDialog):
-    def __init__(self,parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setWindowTitle("Ordered move")
 
-        
         self.explanation = QLabel('')
 
-        
-        orderLabel = QLabel("&Order") 
+        orderLabel = QLabel("&Order")
         self.orderCombo = QComboBox()
         orderLabel.setBuddy(self.orderCombo)
         self.orderCombo.currentTextChanged.connect(self.onChanged)
@@ -105,16 +103,32 @@ class orderedMovement_Dialog(QDialog):
         self.buttonBox.rejected.connect(self.reject)
 
         self.layout = QGridLayout()
-        self.layout.addWidget(self.explanation,0,0,1,2)
-        self.layout.addWidget(orderLabel,1,0)
-        self.layout.addWidget(self.orderCombo,1,1)
-        self.layout.addWidget(self.buttonBox,2,0,1,2)
+        self.layout.addWidget(self.explanation, 0, 0, 1, 2)
+        self.layout.addWidget(orderLabel, 1, 0)
+        self.layout.addWidget(self.orderCombo, 1, 1)
+        self.layout.addWidget(self.buttonBox, 2, 0, 1, 2)
         self.setLayout(self.layout)
-        
+
         self.scan_order = ""
 
-    def onChanged(self,t):
-        self.scan_order = t
+class askForName(QDialog):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+            self.setWindowTitle("Ask for name")
+
+            self.message = QLabel('')
+            self.lineEditField = QLineEdit()
+
+            QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+            self.buttonBox = QDialogButtonBox(QBtn)
+            self.buttonBox.accepted.connect(self.accept)
+            self.buttonBox.rejected.connect(self.reject)
+
+            self.layout = QVBoxLayout()
+            self.layout.addWidget(self.message)
+            self.layout.addWidget(self.lineEditField)
+            self.setLayout(self.layout)
 
 
 # The main class
@@ -126,8 +140,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         super(MainWindow, self).__init__()
         self.setupUi(self)
 
-        self.GLOBAL_POS = {"x": 0.0, "y": 0.0, "z": 0.0}
-
+        self.volume_nid = 0
         self.initPyrameModules()
         self.coords_3d_scan = []
         self.setInitialValues()
@@ -282,7 +295,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.close()
 
     def updatePositionWidget(self):
-        retcode,res = self.callPyrame("get_position@paths","space_1")
+        retcode, res = self.callPyrame("get_position@paths","space_1")
         if retcode == 1:
             p = res.split(',')
             print(p)
@@ -406,18 +419,23 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
 
         # we need to ask for a name for the vol_id
-
-        retcode, res = self.callPyrame("init_volume@paths",
-                                       vol_id,
-                                       "space_1",
-                                       "prism",
-                                       "prism",
-                                       new_coords,
-                                       ext_axis,
-                                       "%s" % (axis_min+origin[c2]),
-                                       "%s"%(axis_max+origin[c2]))
-        if retcode == 1:
-            self.create_path.setEnabled(True)
+        dlg = askForName()
+        dlf.message.setText("Enter volume id")
+        dlg.linEditField.setText("vol_%d" % self.volume_nid)
+        if dlg.exec_():
+            vol_id = dlg.lineEditField.text()
+            print("""retcode, res = self.callPyrame("init_volume@paths",
+                                           vol_id,
+                                           "space_1",
+                                           "prism",
+                                           "prism",
+                                           new_coords,
+                                           ext_axis,
+                                           "%s" % (axis_min+origin[c2]),
+                                           "%s" % (axis_max+origin[c2]))"""
+            if retcode == 1:
+                self.create_path.setEnabled(True)
+                self.volume_nid += 1
 
 
 
