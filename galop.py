@@ -385,15 +385,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def createVolume(self):
         ext_axis = self.extrusion_axis.currentText()
         if ext_axis == "x":
-            c0,c1,c2 = 1,2,0
+            c0, c1, c2 = 1, 2, 0
         elif ext_axis == "y":
-            c0,c1,c2 = 0,2,1
+            c0, c1, c2 = 0, 2, 1
         elif ext_axis == "z":
-            c0,c1,c2 = 0,1,2
+            c0, c1, c2 = 0, 1, 2
 
         origin = []
         for a in self.AXIS_3D:
-            origin.append(float(getattr(self, "%s_origin" % a ).text()))
+            origin.append(float(getattr(self, "%s_origin" % a).text()))
 
         axis_min = float(getattr(self, "min_extrusion").text())
         axis_max = float(getattr(self, "max_extrusion").text())
@@ -405,8 +405,20 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         coords = self.points_3d.item(0).text().split(',')
         new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
 
-        
-        print("calling init_volume@paths,space_1,prism,prism",new_coords,ext_axis,"%s" % (axis_min+origin[c2]),"%s"%(axis_max+origin[c2]))
+        # we need to ask for a name for the vol_id
+
+        retcode, res = self.callPyrame("init_volume@paths",
+                                       vol_id,
+                                       "space_1",
+                                       "prism",
+                                       "prism",
+                                       new_coords,
+                                       ext_axis,
+                                       "%s" % (axis_min+origin[c2]),
+                                       "%s"%(axis_max+origin[c2]))
+        if retcode == 1:
+            self.create_path.setEnabled(True)
+
 
 
     def createPath(self):
