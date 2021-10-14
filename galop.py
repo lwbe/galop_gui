@@ -66,7 +66,14 @@ pyrame_modules_configuration = {
             "config": ["300", "0"]
         },
     },
-    "multimeter": {
+#    "multimeter": {
+#        "gaussmeter": {
+#            "init": [
+#                "ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)"],
+#            "config": []
+#        },
+#    },
+    "ls_460": {
         "gaussmeter": {
             "init": [
                 "ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)"],
@@ -309,6 +316,22 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 w = getattr(self, "%s_local" % a)
                 w.setText(str(float(c) - o))
 
+    def updateGaussmeterWidget(self,values=None):
+        if values == None:
+            retcode, res = self.callPyrame("measure@ls460", "gaussmeter")
+            if retcode == 1:
+                Bx, By, Bz, Bn = res.split(",")
+
+        else:
+            retcode = 1
+            Bx, By, Bz, Bn = values.split(",")
+        if retcode == 1:
+            self.field_x.setText(Bx)
+            self.field_y.setText(By)
+            self.field_z.setText(Bz)
+            self.field_n.setText(Bn)
+
+
     def setInitialValues(self):
         """
         init interface with value in a conf file or internal data and by querying the devices
@@ -318,6 +341,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             getattr(self, w).setText(v)
 
         self.updatePositionWidget()
+        self.updateGaussmeterWidget()
+
 
     def move(self):
         # extract axis and direction from the button name
