@@ -29,3 +29,44 @@ bindpyrame.sendcmd("localhost",9350,"get_position_paths","space_01")
 
 # move to absolute coord
 bindpyrame.sendcmd("localhost",9350,"move_space_paths","space_01","2","3","4","2","2","2","2","2","2")
+
+
+# gaussmeter
+bindpyrame.sendcmd("localhost",9722,"init_ls_460","gaussmeter","ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)")
+bindpyrame.sendcmd("localhost",9722,"config_ls_460","gaussmeter")
+
+# type and snum of probe
+bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","TYPE?")
+bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","SNUM?")
+Out[18]: (1, 'H068256Z  ')
+
+# get values and set values using free command and queries
+In [19]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","RANGE?")
+Out[19]: (1, '3')
+
+In [20]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","CHNL?")
+Out[20]: (1, 'Z')
+
+In [21]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","AUTO?")
+Out[21]: (1, '1')
+
+In [22]: bindpyrame.sendcmd("localhost",9722,"free_command_ls_460","gaussmeter","CHNL X")
+Out[22]: (1, 'ok')
+
+In [23]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","AUTO?")
+Out[23]: (1, '1')
+
+In [24]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","RANGE?")
+Out[24]: (1, '3')
+
+In [25]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","FIELD?")
+Out[25]: (1, '+0.0479 ')
+
+In [26]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","FIELDM?")
+Out[26]: (1, 'm')
+
+In [27]: bindpyrame.sendcmd("localhost",9722,"measure_ls_460","gaussmeter")
+Out[27]: (1, '4.83e-05,-0.0002123,0.0009432,0.000968')
+
+In [28]:
+Do you really want to exit ([y]/n)? y

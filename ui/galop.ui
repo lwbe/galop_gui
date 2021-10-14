@@ -860,7 +860,7 @@ QGroupBox::title {
        </widget>
       </item>
       <item row="1" column="2">
-       <widget class="QComboBox" name="comboBox"/>
+       <widget class="QComboBox" name="field_range_x"/>
       </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_22">
@@ -877,7 +877,7 @@ QGroupBox::title {
        </widget>
       </item>
       <item row="2" column="2">
-       <widget class="QComboBox" name="comboBox_2"/>
+       <widget class="QComboBox" name="field_range_y"/>
       </item>
       <item row="2" column="3">
        <spacer name="horizontalSpacer_2">
@@ -907,7 +907,7 @@ QGroupBox::title {
        </widget>
       </item>
       <item row="3" column="2">
-       <widget class="QComboBox" name="comboBox_3"/>
+       <widget class="QComboBox" name="field_range_z"/>
       </item>
       <item row="4" column="0">
        <widget class="QLabel" name="label_28">
