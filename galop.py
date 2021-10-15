@@ -143,11 +143,18 @@ class askForName(QDialog):
 class MainWindow(QMainWindow,Ui_MainWindow):
     AXIS_3D = ["x", "y", "z"]
     PATH_ORDER = ["zxy", "zyx", "yxz", "yzx", "xyz", "xzy"]
-
+    GAUSSMETER_RANGE = ['auto','0','1','2','3','custom']
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
 
+        self.extrusion_axis.addItems(reversed(self.AXIS_3D))
+        self.field_range_x.addItems(self.GAUSSMETER_RANGE)
+        self.field_range_y.addItems(self.GAUSSMETER_RANGE)
+        self.field_range_z.addItems(self.GAUSSMETER_RANGE)
+
+
+        
         self.volume_nid = 0
         self.path_nid = 0
         self.initPyrameModules()
@@ -202,7 +209,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.start_scan.clicked.connect(self.scan)
         self.start_scan.setEnabled(False)
 
-        self.extrusion_axis.addItems(reversed(self.AXIS_3D))
         
     def check_state(self, *args, **kwargs):
         sender = self.sender()
@@ -318,9 +324,16 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def updateGaussmeterWidget(self,values=None):
         if values == None:
-            retcode, res = self.callPyrame("measure@ls460", "gaussmeter")
+            r = ""
+            print(self.field_range_x.currentText())
+            for a in self.AXIS_3D:
+                cr = getattr(self,"field_range_%s"% a).currentText()[0]  # only the first character means a,0,1,2,3,c
+                if cr=='c':
+                    cr ='a'
+                r += cr
+            retcode, res = self.callPyrame("measure@ls_460", "gaussmeter",r)
             if retcode == 1:
-                Bx, By, Bz, Bn = res.split(",")
+                Bx, By, Bz, Bn =res.split(",")
 
         else:
             retcode = 1
@@ -329,7 +342,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.field_x.setText(Bx)
             self.field_y.setText(By)
             self.field_z.setText(Bz)
-            self.field_n.setText(Bn)
+            self.field_norm.setText(Bn)
 
 
     def setInitialValues(self):
