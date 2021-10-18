@@ -14,6 +14,20 @@ from PyQt5.QtWidgets import (
     QComboBox
 )
 
+
+module_to_start = """
+cmdmod /opt/pyrame/cmd_serial.xml &
+cmdmod /opt/pyrame/cmd_gpib.xml &
+cmdmod /opt/pyrame/cmd_th_apt.xml &
+cmdmod /opt/pyrame/cmd_motion.xml &
+cmdmod /opt/pyrame/cmd_paths.xml &
+cmdmod /opt/pyrame/cmd_ls_460.xml &
+"""
+
+
+
+
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator,QValidator
 from galop_ui import Ui_MainWindow
@@ -144,21 +158,21 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     AXIS_3D = ["x", "y", "z"]
     PATH_ORDER = ["zxy", "zyx", "yxz", "yzx", "xyz", "xzy"]
     GAUSSMETER_RANGE = ['auto','0','1','2','3','custom']
+    
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
 
+        # set combobbox values
         self.extrusion_axis.addItems(reversed(self.AXIS_3D))
         self.field_range_x.addItems(self.GAUSSMETER_RANGE)
         self.field_range_y.addItems(self.GAUSSMETER_RANGE)
         self.field_range_z.addItems(self.GAUSSMETER_RANGE)
-
-
+        self.path.addItems(self.PATH_ORDER)
         
         self.volume_nid = 0
         self.path_nid = 0
         self.initPyrameModules()
-        self.coords_3d_scan = []
         self.setInitialValues()
 
         # setting QDoubleValidator for all QLineEdit widgets
@@ -168,12 +182,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for i in self.findChildren(QLineEdit):
             w = getattr(self, i.objectName())
             w.setValidator(double_validator)
-            #w.setText("1.0")
             w.textChanged.connect(self.check_state)
             w.textChanged.emit(w.text())
 
-        # add some value to path widget
-        [self.path.addItem(i) for i in self.PATH_ORDER]
         for pos_input in ['x_origin', 'y_origin', 'z_origin']:
             w = getattr(self, pos_input)
             w.setEnabled(False)
@@ -204,8 +215,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.delete_position.setEnabled(False)
         self.create_volume.clicked.connect(self.createVolume)
         self.create_volume.setEnabled(False)
+        self.delete_volume.clicked.connect(self.deleteVolume)
+        self.delete_volume.setEnabled(False)
         self.create_path.clicked.connect(self.createPath)
         self.create_path.setEnabled(False)
+        self.delete_path.clicked.connect(self.deletePath)
+        self.delete_path.setEnabled(False)
         self.start_scan.clicked.connect(self.scan)
         self.start_scan.setEnabled(False)
 
@@ -306,6 +321,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                       )
 
         if button == QMessageBox.Yes:
+            # removing space, volume and paths ids
+            
+            self.callPyrame("deinit_space@paths","space_1")
+            for i in range(self.volume_choice.count()):
+                print(self.volume_choice.itemText(i))
+                self.callPyrame("deinit_volume@paths",self.volume_choice.itemText(i))
+            for i in range(self.path_choice.count()):
+                self.callPyrame("deinit_path@paths",self.path_choice.itemText(i))
+            
             self.deinitPyrameModules()
             self.close()
 
@@ -334,7 +358,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             retcode, res = self.callPyrame("measure@ls_460", "gaussmeter",r)
             if retcode == 1:
                 Bx, By, Bz, Bn =res.split(",")
-
         else:
             retcode = 1
             Bx, By, Bz, Bn = values.split(",")
@@ -343,7 +366,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.field_y.setText(By)
             self.field_z.setText(Bz)
             self.field_norm.setText(Bn)
-
 
     def setInitialValues(self):
         """
@@ -355,7 +377,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         self.updatePositionWidget()
         self.updateGaussmeterWidget()
-
 
     def move(self):
         # extract axis and direction from the button name
@@ -423,8 +444,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         coord = ",".join([getattr(self, "%s_local" % axis).text() for axis in self.AXIS_3D])
         if not self.points_3d.findItems(coord, Qt.MatchExactly):
             self.points_3d.addItem(coord)
-            
-            
+                        
     def deletePosition(self):
         for i in self.points_3d.selectedItems():
             self.points_3d.takeItem(self.points_3d.row(i))
@@ -475,10 +495,21 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                            "%s" % (axis_max+origin[c2]))
             if retcode == 1:
                 self.create_path.setEnabled(True)
+                self.delete_volume.setEnabled(True)
                 self.volume_nid += 1
                 self.volume_choice.addItem(vol_id)
+                self.volume_choice.setCurrentText(vol_id)
 
+    def deleteVolume(self):
+        vol_id = self.volume_choice.currentText()
+        retcode, res = self.callPyrame("deinit_volume@paths",vol_id)
+        if retcode == 1:
+            self.volume_choice.removeItem(self.volume_choice.currentIndex())
 
+            # update interface if there is no volume to delete anymore
+            if self.volume_choice.count() == 0:
+                self.delete_volume.setEnabled(False)
+                self.create_path.setEnabled(False)
 
     def createPath(self):
         vol_id = self.volume_choice.currentText()
@@ -487,26 +518,63 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         scan_y_step = self.scan_y_step.text()
         scan_z_step = self.scan_z_step.text()
 
-        path_id = "path_%d" % self.path_nid
-        self.volume_choice.addItem(path_id)
-        print(path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,"rr","11")
 
-        self.volume_choice.addItem(path_id)
-        self.start_scan.setEnabled(True)
-              
+        dlg = askForName()
+        dlg.message.setText("Enter path id")
+        dlg.lineEditField.setText("path_%d" % self.path_nid)
+        if dlg.exec_():
+            path_id = dlg.lineEditField.text()
+            retcode,res = print(path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,"rr","11")
+            retcode = 1
+            if retcode == 1:
+                self.start_scan.setEnabled(True)
+                self.delete_path.setEnabled(True)
+                self.path_nid += 1
+                self.path_choice.addItem(path_id)
+                self.path_choice.setCurrentText(path_id)
+
+    def deletePath(self):
+        path_id = self.path_choice.currentText()
+        retcode, res = self.callPyrame("deinit_path@paths",path_id)
+        if retcode==1:
+            self.path_choice.removeItem(self.path_choice.currentIndex())
+
+            if self.path_choice.count() == 0:
+                self.delete_path.setEnabled(False)
+                self.start_scan.setEnabled(False)
+                
+
+                
     def scan(self):
-        # get the values
-        #move_first_paths(path_id,s1,s2,s3,a1,a2,a3,strategy="undef"):
-
-        # measure
-
-        # create file and start writing it.
+        move_params = [self.path_choice.currentText()]
+        strategy=["undef"]
+        speed = []
+        acc = []
         
-        #move_next_paths(path_id,s1,s2,s3,a1,a2,a3,strategy="undef"):
+        for a in self.AXIS_3D:
+            speed.append(getattr(self, "%s_speed" % a).text())
+            acc.append(getattr(self, "%s_acc" % a).text())
 
+        move_params.extend(speed)
+        move_params.extend(acc)
+        move_params.extend(strategy)
+        
+        # get the values
+        retcode, res = call_pyrame("move_first@paths",*move_params)
+        retcode, position = self.callPyrame("get_position@paths","space_1")
 
-        pass
+        
+        # measure
+        retcode,field = call_pyrame("measure@ls_460","gaussmeter")
+        # create file and start writing it.
+        print(position,field)
+        run = True
+        while run:
+            retcode, res = call_pyrame("move_next@paths",*move_params)
+            if res == "finished":
+                run = False
 
+                
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
