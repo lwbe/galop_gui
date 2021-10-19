@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QComboBox
 )
-
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
 module_to_start = """
 cmdmod /opt/pyrame/cmd_serial.xml &
@@ -104,6 +104,108 @@ pyrame_modules_configuration = {
 }
 
 
+class Pyrame(object):
+    def __init__(self,parent):
+        self.module_port = {}
+        self.parent = parent
+
+     # Pyrame Stuff
+    def initModules(self,pyrame_modules_configuration):
+        # read conf file
+        self.module_port = {}
+        self.pyrame_modules_init = pyrame_modules_configuration
+        for module, values in self.pyrame_modules_init.items():
+            self.module_port[module] = int(bindpyrame.get_port(module.upper()))
+            for uid, params in values.items():
+                print(module,self.module_port[module],uid,params)
+                # we usually have to init first and then config unless it is explicitly different
+                order = params.get('init_order', ["init", "config"])
+                if order:
+                    for function in order:
+                        retcode, res = self.call(
+                            "%s@%s" % (function,module),
+                            uid,
+                            *params[function]
+                        )
+
+    def deinitModules(self):
+        # we inval and deinit the modules
+        for module, values in self.pyrame_modules_init.items():
+            for uid, params in values.items():
+                order = params.get('deinit_order', ["inval","deinit"])
+                for function in order:
+                         retcode, res = self.call(
+                             "%s@%s" % (function, module),
+                             uid
+                         )
+
+    def call(self, pyrame_func, *args):
+        """
+        Function to call pyrame module and prevent user action. Inform user in case of error
+
+        :param pyrame_func: the pyrame function to call in the form function@module
+        :param args: the args of the function
+        :return: the return of the pyrame module
+        """
+        
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        function, module = pyrame_func.split("@")
+        retcode, res = bindpyrame.sendcmd("localhost",
+                                          self.module_port[module],
+                                          "%s_%s" % (function, module),
+                                          *args)
+        if retcode == 0:
+            # see stack overflow to customize message box
+            # https://stackoverflow.com/questions/37201338/how-to-place-custom-image-onto-qmessagebox
+            # messagebox.setIconPixmap(QPixmap(":/images/image_file)) where image_file is the
+            messagenbox = QMessageBox.question(
+                self.parent,
+                "Error calling pyrame",
+                "%s" % res,
+                buttons=QMessageBox.Ok)
+
+        QApplication.restoreOverrideCursor()
+        return retcode, res
+    
+
+    
+
+
+# thread for scan
+class Worker(QObject):
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
+    field = pyqtSignal(str)
+
+    def __init__(self,move_params,pyrame):
+        super().__init__()
+        self.pyrame = pyrame
+        self.move_params = move_params
+        
+    
+    def run(self):
+
+        retcode, res = self.pyrame.call("move_first@paths",*self.move_params)
+        retcode, position = self.pyrame.call("get_position@paths","space_1")
+        retcode,field = self.pyrame.call("measure@ls_460","gaussmeter")
+        
+        # create file and start writing it
+        print("data",position,field)
+        self.field.emit("%s;%s" % (position,field))
+            
+        run = True
+        while run:
+            retcode, res = self.pyrame.call("move_next@paths",*self.move_params)
+            retcode, position = self.pyrame.call("get_position@paths","space_1")
+            retcode, field = self.pyrame.call("measure@ls_460","gaussmeter")
+            print("data",position,field)
+            self.field.emit("%s;%s" % (position,field))
+            if res == "finished":
+                run = False
+                
+        self.finished.emit()
+
+
 # Custom widget
 class orderedMovement_Dialog(QDialog):
     def __init__(self, parent=None):
@@ -116,7 +218,6 @@ class orderedMovement_Dialog(QDialog):
         orderLabel = QLabel("&Order")
         self.orderCombo = QComboBox()
         orderLabel.setBuddy(self.orderCombo)
-        self.orderCombo.currentTextChanged.connect(self.onChanged)
 
         QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         self.buttonBox = QDialogButtonBox(QBtn)
@@ -130,7 +231,6 @@ class orderedMovement_Dialog(QDialog):
         self.layout.addWidget(self.buttonBox, 2, 0, 1, 2)
         self.setLayout(self.layout)
 
-        self.scan_order = ""
 
 class askForName(QDialog):
         def __init__(self, parent=None):
@@ -172,7 +272,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         
         self.volume_nid = 0
         self.path_nid = 0
-        self.initPyrameModules()
+        self.pyrame=Pyrame(self)
+        self.pyrame.initModules(pyrame_modules_configuration)
         self.setInitialValues()
 
         # setting QDoubleValidator for all QLineEdit widgets
@@ -237,62 +338,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             color = '#f6989d' # red
         sender.setStyleSheet('QLineEdit { background-color: %s }' % color)
 
-    # Pyrame Stuff
-    def initPyrameModules(self):
-        # read conf file
-        self.module_port = {}
-        self.pyrame_modules_init = pyrame_modules_configuration
-        for module, values in self.pyrame_modules_init.items():
-            self.module_port[module] = int(bindpyrame.get_port(module.upper()))
-            for uid, params in values.items():
-                print(module,self.module_port[module],uid,params)
-                # we usually have to init first and then config unless it is explicitly different
-                order = params.get('init_order', ["init", "config"])
-                if order:
-                    for function in order:
-                        retcode, res = self.callPyrame(
-                            "%s@%s" % (function,module),
-                            uid,
-                            *params[function]
-                        )
-
-    def deinitPyrameModules(self):
-        # we inval and deinit the modules
-        for module, values in self.pyrame_modules_init.items():
-            for uid, params in values.items():
-                order = params.get('deinit_order', ["inval","deinit"])
-                for function in order:
-                         retcode, res = self.callPyrame(
-                             "%s@%s" % (function, module),
-                             uid
-                         )
-
-    def callPyrame(self, pyrame_func, *args):
-        """
-        Function to call pyrame module and prevent user action. Inform user in case of error
-
-        :param pyrame_func: the pyrame function to call in the form function@module
-        :param args: the args of the function
-        :return: the return of the pyrame module
-        """
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        function, module = pyrame_func.split("@")
-        retcode, res = bindpyrame.sendcmd("localhost",
-                                          self.module_port[module],
-                                          "%s_%s" % (function, module),
-                                          *args)
-        if retcode == 0:
-            # see stack overflow to customize message box
-            # https://stackoverflow.com/questions/37201338/how-to-place-custom-image-onto-qmessagebox
-            # messagebox.setIconPixmap(QPixmap(":/images/image_file)) where image_file is the
-            messagenbox = QMessageBox.question(
-                self,
-                "Error in callPyrame",
-                "%s" % res,
-                buttons=QMessageBox.Ok)
-        QApplication.restoreOverrideCursor()
-        return retcode, res
-
     def loadScanParam(self):
         name = QFileDialog.getOpenFileName(self, "Load scan file")
 
@@ -323,28 +368,35 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if button == QMessageBox.Yes:
             # removing space, volume and paths ids
             
-            self.callPyrame("deinit_space@paths","space_1")
+            self.pyrame.call("deinit_space@paths","space_1")
             for i in range(self.volume_choice.count()):
                 print(self.volume_choice.itemText(i))
-                self.callPyrame("deinit_volume@paths",self.volume_choice.itemText(i))
+                self.pyrame.call("deinit_volume@paths",self.volume_choice.itemText(i))
             for i in range(self.path_choice.count()):
-                self.callPyrame("deinit_path@paths",self.path_choice.itemText(i))
+                self.pyrame.call("deinit_path@paths",self.path_choice.itemText(i))
             
-            self.deinitPyrameModules()
+            self.pyrame.deinitModules()
             self.close()
 
-    def updatePositionWidget(self):
-        retcode, res = self.callPyrame("get_position@paths","space_1")
-        if retcode == 1:
-            p = res.split(',')
-            print(p)
-            for a, c in zip(self.AXIS_3D, p):
-                w = getattr(self, "%s_global" % a )
-                w.setText(c)
-                w = getattr(self, "%s_origin" % a)
-                o = float(w.text())
-                w = getattr(self, "%s_local" % a)
-                w.setText(str(float(c) - o))
+    def updatePositionWidget(self,values=None):
+        if values:
+            p=values.split(",")
+        else:
+            retcode, res = self.pyrame.call("get_position@paths","space_1")
+            if retcode == 1:
+                p = res.split(',')
+            else:
+                return
+            
+        print("Updating position",p)
+        for a, c in zip(self.AXIS_3D, p):
+            w = getattr(self, "%s_global" % a )
+            w.setText(c)
+                        
+            w = getattr(self, "%s_origin" % a)
+            o = float(w.text())
+            w = getattr(self, "%s_local" % a)
+            w.setText(str(float(c) - o))
 
     def updateGaussmeterWidget(self,values=None):
         if values == None:
@@ -355,13 +407,14 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 if cr=='c':
                     cr ='a'
                 r += cr
-            retcode, res = self.callPyrame("measure@ls_460", "gaussmeter",r)
+            retcode, res = self.pyrame.call("measure@ls_460", "gaussmeter",r)
             if retcode == 1:
                 Bx, By, Bz, Bn =res.split(",")
         else:
             retcode = 1
             Bx, By, Bz, Bn = values.split(",")
         if retcode == 1:
+            print("Updating field",Bx,By,Bz,Bn)
             self.field_x.setText(Bx)
             self.field_y.setText(By)
             self.field_z.setText(Bz)
@@ -401,7 +454,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             pos[axis_index] = "%f" % (float(getattr(self, "%s_global" % axis).text())+step)
 
         print("moving to pos",pos)
-        retcode, res = self.callPyrame("move_space@paths","space_1",*(pos+speed+acc))
+        retcode, res = self.pyrame.call("move_space@paths","space_1",*(pos+speed+acc))
         if retcode == 1:
             self.updatePositionWidget()
 
@@ -425,11 +478,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         dlg.explanation.setText("Order axis for Homing. Check twice !!")
         dlg.orderCombo.addItems(self.PATH_ORDER+["x","y","z"])
         if dlg.exec_():
-            if dlg.scan_order:
-                for d in dlg.scan_order:          
-                    retcode, res = self.callPyrame("home@motion", "axis_%s" % d,"r","1")
-                    if retcode == 1:
-                        self.updatePositionWidget()
+            for d in dlg.orderCombo.currentText():          
+                retcode, res = self.pyrame.call("home@motion", "axis_%s" % d,"r","1")
+                if retcode == 1:
+                    self.updatePositionWidget()
        
     def addCurrentPosition(self):
         """
@@ -484,7 +536,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         dlg.lineEditField.setText("vol_%d" % self.volume_nid)
         if dlg.exec_():
             vol_id = dlg.lineEditField.text()
-            retcode, res = self.callPyrame("init_volume@paths",
+            retcode, res = self.pyrame.call("init_volume@paths",
                                            vol_id,
                                            "space_1",
                                            "prism",
@@ -502,7 +554,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def deleteVolume(self):
         vol_id = self.volume_choice.currentText()
-        retcode, res = self.callPyrame("deinit_volume@paths",vol_id)
+        retcode, res = self.pyrame.call("deinit_volume@paths",vol_id)
         if retcode == 1:
             self.volume_choice.removeItem(self.volume_choice.currentIndex())
 
@@ -512,8 +564,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.create_path.setEnabled(False)
 
     def createPath(self):
+        map_xyzton={"x":"1","y":"2","z":"3"}
+
         vol_id = self.volume_choice.currentText()
-        path_order = self.path.currentText()
+        path_order = "".join([map_xyzton[i] for i in self.path.currentText()])
+        
         scan_x_step = self.scan_x_step.text()
         scan_y_step = self.scan_y_step.text()
         scan_z_step = self.scan_z_step.text()
@@ -524,8 +579,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         dlg.lineEditField.setText("path_%d" % self.path_nid)
         if dlg.exec_():
             path_id = dlg.lineEditField.text()
-            retcode,res = print(path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,"rr","11")
-            retcode = 1
+            retcode,res = self.pyrame.call("init_path@paths",path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,"rr","ppp")
             if retcode == 1:
                 self.start_scan.setEnabled(True)
                 self.delete_path.setEnabled(True)
@@ -535,7 +589,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def deletePath(self):
         path_id = self.path_choice.currentText()
-        retcode, res = self.callPyrame("deinit_path@paths",path_id)
+        retcode, res = self.pyrame.call("deinit_path@paths",path_id)
         if retcode==1:
             self.path_choice.removeItem(self.path_choice.currentIndex())
 
@@ -543,7 +597,14 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.delete_path.setEnabled(False)
                 self.start_scan.setEnabled(False)
                 
-
+    def reportProgress(self,n):
+        self.x_global.setText(f"{n}")
+        
+    def reportField(self,n):
+        print(n)
+        p,f = n.split(";")
+        self.updatePositionWidget(p)
+        self.updateGaussmeterWidget(f)
                 
     def scan(self):
         move_params = [self.path_choice.currentText()]
@@ -558,22 +619,26 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         move_params.extend(speed)
         move_params.extend(acc)
         move_params.extend(strategy)
-        
-        # get the values
-        retcode, res = call_pyrame("move_first@paths",*move_params)
-        retcode, position = self.callPyrame("get_position@paths","space_1")
 
-        
-        # measure
-        retcode,field = call_pyrame("measure@ls_460","gaussmeter")
-        # create file and start writing it.
-        print(position,field)
-        run = True
-        while run:
-            retcode, res = call_pyrame("move_next@paths",*move_params)
-            if res == "finished":
-                run = False
+        # Step 2: Create a QThread object
+        self.thread = QThread()
+        # Step 3: Create a worker object
+        self.worker = Worker(move_params,self.pyrame)
+        # Step 4: Move worker to the thread
+        self.worker.moveToThread(self.thread)
+        # Step 5: Connect signals and slots
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.progress.connect(self.reportProgress)
+        self.worker.field.connect(self.reportField)
+        # Step 6: Start the thread
+        self.thread.start()
 
+        return
+
+    
                 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
