@@ -5,15 +5,16 @@ from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QDialog,
+    QWidget,
     QDialogButtonBox,
-    QVBoxLayout, QHBoxLayout,QGridLayout,
+    QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel,
     QMessageBox,
     QFileDialog,
     QLineEdit,
     QComboBox
 )
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, QSize
 
 module_to_start = """
 cmdmod /opt/pyrame/cmd_serial.xml &
@@ -27,10 +28,19 @@ cmdmod /opt/pyrame/cmd_ls_460.xml &
 
 
 
+import numpy as np
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import axes3d
+from matplotlib import cm
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator,QValidator
+
 from galop_ui import Ui_MainWindow
+from scan3d_ui import Ui_Dialog
+from scan3dwidget_ui import Ui_Form
+
 import bindpyrame
 
 # datas should be taken from a file
@@ -172,37 +182,58 @@ class Pyrame(object):
 
 
 # thread for scan
+class MUWorker(QObject):
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
+    field = pyqtSignal(str)
+
+    def __init__(self, move_params, pyrame):
+        super().__init__()
+        self.pyrame = pyrame
+        self.move_params = move_params
+
+    def run(self):
+        for i in range(101):
+            position="%d,%d,%d" % (i,i,i)
+            field="%d,%d,%d,%d" % (i,2*i,3*i,4*i)
+            print("data", position, field)
+            self.field.emit("%s;%s" % (position, field))
+
+            self.progress.emit(i)
+            time.sleep(0.1)
+
+        self.finished.emit()
+
 class Worker(QObject):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
     field = pyqtSignal(str)
 
-    def __init__(self,move_params,pyrame):
+    def __init__(self, move_params, pyrame):
         super().__init__()
         self.pyrame = pyrame
         self.move_params = move_params
-        
-    
+
     def run(self):
 
-        retcode, res = self.pyrame.call("move_first@paths",*self.move_params)
-        retcode, position = self.pyrame.call("get_position@paths","space_1")
-        retcode,field = self.pyrame.call("measure@ls_460","gaussmeter")
-        
+        retcode, res = self.pyrame.call("move_first@paths", *self.move_params)
+        retcode, position = self.pyrame.call("get_position@paths", "space_1")
+        retcode, field = self.pyrame.call("measure@ls_460", "gaussmeter")
+
         # create file and start writing it
-        print("data",position,field)
-        self.field.emit("%s;%s" % (position,field))
-            
+        print("data", position, field)
+        self.field.emit("%s;%s" % (position, field))
+
         run = True
         while run:
-            retcode, res = self.pyrame.call("move_next@paths",*self.move_params)
-            retcode, position = self.pyrame.call("get_position@paths","space_1")
-            retcode, field = self.pyrame.call("measure@ls_460","gaussmeter")
-            print("data",position,field)
-            self.field.emit("%s;%s" % (position,field))
+            retcode, res = self.pyrame.call("move_next@paths", *self.move_params)
+            retcode, position = self.pyrame.call("get_position@paths", "space_1")
+            retcode, field = self.pyrame.call("measure@ls_460", "gaussmeter")
+            print("data", position, field)
+            self.field.emit("%s;%s" % (position, field))
             if res == "finished":
                 run = False
-                
+
         self.finished.emit()
 
 
@@ -252,6 +283,53 @@ class askForName(QDialog):
             self.layout.addWidget(self.buttonBox)
             self.setLayout(self.layout)
 
+# 3D scan class
+class Scan3dPlotWidget(QWidget, Ui_Form):
+    def __init__(self, parent=None):
+        super(Scan3dPlotWidget,self).__init__(parent)
+        self.setupUi(self)
+        self.stop.clicked.connect(self.close)
+
+
+# 3D scan class
+class Scan3dPlotDialog(QDialog, Ui_Dialog):
+    def __init__(self, parent=None):
+        super(Scan3dPlotDialog, self).__init__(parent)
+        self.setupUi(self)
+
+        self.fig = Figure(figsize=(5, 3))
+        self.canvas = FigureCanvas(self.fig)
+        self.widget = self.canvas
+        self.widget.setMinimumSize(QSize(1024, 768))
+
+        self.scan3d_stop.clicked.connect(self.accept)
+
+
+        self.fig.set_canvas(self.canvas)
+        self._ax = self.canvas.figure.add_subplot(projection="3d")
+
+        self._ax.set_xlabel("X")
+        self._ax.set_ylabel("Y")
+        self._ax.set_zlabel("Z")
+        self.plot_wire()
+        self._ax.view_init(30, 30)
+
+
+
+    def plot_contour(self):
+        cset = self._ax.contour(self.X, self.Y, self.Z, zdir='z', offset=self.Z.min(), cmap=cm.coolwarm)
+        cset = self._ax.contour(self.X, self.Y, self.Z, zdir='x', offset=self.X.min(), cmap=cm.coolwarm)
+        cset = self._ax.contour(self.X, self.Y, self.Z, zdir='y', offset=self.Y.min(), cmap=cm.coolwarm)
+
+    def plot_wire(self):
+        # Data
+        self.X, self.Y, self.Z = axes3d.get_test_data(0.03)
+
+        cset = self._ax.contourf(self.X, self.Y, self.Z, cmap=cm.coolwarm)
+        #self._ax.plot_wireframe(self.X, self.Y, self.Z, rstride=10, cstride=10, cmap="viridis")
+        #self.plot_contour()
+        self.canvas.draw()
+
 
 # The main class
 class MainWindow(QMainWindow,Ui_MainWindow):
@@ -262,6 +340,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
+
 
         # set combobbox values
         self.extrusion_axis.addItems(reversed(self.AXIS_3D))
@@ -323,7 +402,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.delete_path.clicked.connect(self.deletePath)
         self.delete_path.setEnabled(False)
         self.start_scan.clicked.connect(self.scan)
-        self.start_scan.setEnabled(False)
+        #self.start_scan.setEnabled(False)
 
         
     def check_state(self, *args, **kwargs):
@@ -481,7 +560,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             for d in dlg.orderCombo.currentText():          
                 retcode, res = self.pyrame.call("home@motion", "axis_%s" % d,"r","1")
                 if retcode == 1:
-                    self.updatePositionWidget()
+                   self.updatePositionWidget()
        
     def addCurrentPosition(self):
         """
@@ -600,18 +679,24 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def reportProgress(self,n):
         self.x_global.setText(f"{n}")
         
-    def reportField(self,n):
-        print(n)
-        p,f = n.split(";")
+    def reportField(self, n):
+        p, f = n.split(";")
         self.updatePositionWidget(p)
         self.updateGaussmeterWidget(f)
-                
+
+    def scan3d_showProgress(self, i):
+        self.scan3d_plot.scan3d_progress.setValue(i)
+
+    def scan3d_finished_scan(self):
+        self.scan3d_plot.scan3d_stop.setText("Close")
+        self.scan3d_plot.scan3d_suspend.setEnabled(False)
+
     def scan(self):
         move_params = [self.path_choice.currentText()]
-        strategy=["undef"]
+        strategy = ["undef"]
         speed = []
         acc = []
-        
+
         for a in self.AXIS_3D:
             speed.append(getattr(self, "%s_speed" % a).text())
             acc.append(getattr(self, "%s_acc" % a).text())
@@ -620,10 +705,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         move_params.extend(acc)
         move_params.extend(strategy)
 
-        # Step 2: Create a QThread object
+        self.scan3d_plot = Scan3dPlotDialog()
+        self.scan3d_plot.show()
         self.thread = QThread()
         # Step 3: Create a worker object
-        self.worker = Worker(move_params,self.pyrame)
+        self.worker = MUWorker(move_params,self.pyrame)
         # Step 4: Move worker to the thread
         self.worker.moveToThread(self.thread)
         # Step 5: Connect signals and slots
@@ -631,12 +717,34 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
-        self.worker.progress.connect(self.reportProgress)
+
+        self.worker.finished.connect(self.scan3d_finished_scan)
+        self.worker.progress.connect(self.scan3d_showProgress)
         self.worker.field.connect(self.reportField)
         # Step 6: Start the thread
         self.thread.start()
 
-        return
+
+    def scan3D(self):
+        if self.scan3d_plot == None:
+
+            move_params = [self.path_choice.currentText()]
+            strategy = ["undef"]
+            speed = []
+            acc = []
+
+            for a in self.AXIS_3D:
+                speed.append(getattr(self, "%s_speed" % a).text())
+                acc.append(getattr(self, "%s_acc" % a).text())
+
+            move_params.extend(speed)
+            move_params.extend(acc)
+            move_params.extend(strategy)
+
+            self.scan3d_plot = Scan3dPlotDialog(move_params,self.pyrame)
+            self.scan3d_plot.exec_()
+
+            self.scan3d_plot = None
 
     
                 

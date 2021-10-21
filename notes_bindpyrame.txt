@@ -1,24 +1,25 @@
 
-
+############################################### Motion
 
 bindpyrame.get_port("MOTION")
 # -> 9300
+# init config
 bindpyrame.sendcmd("localhost",9300,"init_motion","axis_x","th_apt(model=LTS300,bus=serial(serialnum=45839057))")
 bindpyrame.sendcmd("localhost",9300,"config_motion","axis_x","300","0")
-
 bindpyrame.sendcmd("localhost",9300,"init_motion","axis_y","th_apt(model=BSC1_LNR50,bus=serial(serialnum=40828799),chan=1)")
 bindpyrame.sendcmd("localhost",9300,"config_motion","axis_y","50","0")
-
 bindpyrame.sendcmd("localhost",9300,"init_motion","axis_z","th_apt(model=HSLTS300,bus=serial(serialnum=45897070))")
 bindpyrame.sendcmd("localhost",9300,"config_motion","axis_z","300","0")
 
+# inval,deinit
+bindpyrame.sendcmd("localhost",9300,"inval_motion","axis_x")
+bindpyrame.sendcmd("localhost",9300,"deinit_motion","axis_x")
+bindpyrame.sendcmd("localhost",9300,"inval_motion","axis_y")
+bindpyrame.sendcmd("localhost",9300,"deinit_motion","axis_y")
+bindpyrame.sendcmd("localhost",9300,"inval_motion","axis_z")
+bindpyrame.sendcmd("localhost",9300,"deinit_motion","axis_z")
 
-
-bindpyrame.get_port("MULTIMETER")
-# -> 9700
-bindpyrame.sendcmd("localhost",9700,"init_multimeter","gaussmeter","ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)")
-bindpyrame.sendcmd("localhost",9700,"config_multimeter","gaussmeter")
-
+############################################### PATH
 bindpyrame.get_port("PATHS")
 
 # init space system
@@ -30,8 +31,54 @@ bindpyrame.sendcmd("localhost",9350,"get_position_paths","space_01")
 # move to absolute coord
 bindpyrame.sendcmd("localhost",9350,"move_space_paths","space_01","2","3","4","2","2","2","2","2","2")
 
+# create volume
+bindpyrame.sendcmd("localhost",9350,"init_volume_paths",
+                                    "vol_01",
+                                    "space_01",
+                                    "prism",
+                                    "prism",
+                                    "2.0,2.0;3.0,2.0;3.0,3.0;2.0,3.0;2.0,2.0;",
+                                    "z",
+                                     "2", #     "%s" % (axis_min+origin[c2]),
+                                     "3") #      "%s" % (axis_max+origin[c2]))
 
-# gaussmeter
+# create path
+bindpyrame.sendcmd("localhost",9350,"init_path_paths",
+                                    "path_01",
+                                    "space_01",
+                                    "vol_01",
+                                    "0.5",
+                                    "0.5",
+                                    "0.5",
+                                    "321",
+                                    "mm",
+                                    "ppp")
+
+# move
+# move_first
+bindpyrame.sendcmd("localhost",9350,"move_first_paths",
+                                    "path_01",
+                                    "2","2","2",
+                                    "2","2","2")
+
+
+# deinit
+bindpyrame.sendcmd("localhost",9350,"deinit_space_paths","space_01")
+bindpyrame.sendcmd("localhost",9350,"deinit_volume_paths","vol_01")
+bindpyrame.sendcmd("localhost",9350,"deinit_path_paths","path_01")
+
+
+############################################### multimeter
+bindpyrame.get_port("MULTIMETER")
+# -> 9700
+bindpyrame.sendcmd("localhost",9700,"init_multimeter","gaussmeter","ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)")
+bindpyrame.sendcmd("localhost",9700,"config_multimeter","gaussmeter")
+
+
+
+
+############################################### gaussmeter
+
 bindpyrame.sendcmd("localhost",9722,"init_ls_460","gaussmeter","ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)")
 bindpyrame.sendcmd("localhost",9722,"config_ls_460","gaussmeter")
 
@@ -65,8 +112,7 @@ Out[25]: (1, '+0.0479 ')
 In [26]: bindpyrame.sendcmd("localhost",9722,"free_query_ls_460","gaussmeter","FIELDM?")
 Out[26]: (1, 'm')
 
-In [27]: bindpyrame.sendcmd("localhost",9722,"measure_ls_460","gaussmeter")
-Out[27]: (1, '4.83e-05,-0.0002123,0.0009432,0.000968')
+bindpyrame.sendcmd("localhost",9722,"measure_ls_460","gaussmeter")
 
 In [28]:
 Do you really want to exit ([y]/n)? y
