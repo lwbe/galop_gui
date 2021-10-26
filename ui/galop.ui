@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1448</width>
-    <height>725</height>
+    <width>1265</width>
+    <height>713</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -82,7 +82,7 @@ QGroupBox::title {
      <widget class="QPushButton" name="create_volume">
       <property name="geometry">
        <rect>
-        <x>339</x>
+        <x>290</x>
         <y>130</y>
         <width>111</width>
         <height>22</height>
@@ -95,8 +95,8 @@ QGroupBox::title {
      <widget class="QComboBox" name="volume_choice">
       <property name="geometry">
        <rect>
-        <x>570</x>
-        <y>50</y>
+        <x>510</x>
+        <y>70</y>
         <width>79</width>
         <height>22</height>
        </rect>
@@ -105,8 +105,8 @@ QGroupBox::title {
      <widget class="QLabel" name="label_13">
       <property name="geometry">
        <rect>
-        <x>490</x>
-        <y>100</y>
+        <x>440</x>
+        <y>230</y>
         <width>71</width>
         <height>16</height>
        </rect>
@@ -118,8 +118,8 @@ QGroupBox::title {
      <widget class="QComboBox" name="path">
       <property name="geometry">
        <rect>
-        <x>570</x>
-        <y>100</y>
+        <x>510</x>
+        <y>230</y>
         <width>79</width>
         <height>22</height>
        </rect>
@@ -128,8 +128,8 @@ QGroupBox::title {
      <widget class="QLineEdit" name="scan_x_step">
       <property name="geometry">
        <rect>
-        <x>570</x>
-        <y>130</y>
+        <x>510</x>
+        <y>270</y>
         <width>113</width>
         <height>22</height>
        </rect>
@@ -138,8 +138,8 @@ QGroupBox::title {
      <widget class="QLineEdit" name="scan_y_step">
       <property name="geometry">
        <rect>
-        <x>570</x>
-        <y>170</y>
+        <x>510</x>
+        <y>300</y>
         <width>113</width>
         <height>22</height>
        </rect>
@@ -148,8 +148,8 @@ QGroupBox::title {
      <widget class="QLineEdit" name="scan_z_step">
       <property name="geometry">
        <rect>
-        <x>570</x>
-        <y>210</y>
+        <x>510</x>
+        <y>330</y>
         <width>113</width>
         <height>22</height>
        </rect>
@@ -158,8 +158,8 @@ QGroupBox::title {
      <widget class="QLabel" name="label_14">
       <property name="geometry">
        <rect>
-        <x>500</x>
-        <y>130</y>
+        <x>460</x>
+        <y>290</y>
         <width>57</width>
         <height>14</height>
        </rect>
@@ -171,8 +171,8 @@ QGroupBox::title {
      <widget class="QLabel" name="label_15">
       <property name="geometry">
        <rect>
-        <x>490</x>
-        <y>170</y>
+        <x>460</x>
+        <y>310</y>
         <width>57</width>
         <height>14</height>
        </rect>
@@ -184,8 +184,8 @@ QGroupBox::title {
      <widget class="QLabel" name="label_16">
       <property name="geometry">
        <rect>
-        <x>490</x>
-        <y>220</y>
+        <x>460</x>
+        <y>330</y>
         <width>57</width>
         <height>14</height>
        </rect>
@@ -197,8 +197,8 @@ QGroupBox::title {
      <widget class="QLabel" name="label_17">
       <property name="geometry">
        <rect>
-        <x>490</x>
-        <y>50</y>
+        <x>440</x>
+        <y>70</y>
         <width>57</width>
         <height>14</height>
        </rect>
@@ -971,7 +971,7 @@ QGroupBox::title {
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1448</width>
+     <width>1265</width>
      <height>19</height>
     </rect>
    </property>
@@ -992,15 +992,27 @@ QGroupBox::title {
    <property name="text">
     <string>Load scan param</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
   </action>
   <action name="actionSave_scan_param">
    <property name="text">
     <string>Save scan param</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WindowShortcut</enum>
+   </property>
   </action>
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
    </property>
   </action>
  </widget>
