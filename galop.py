@@ -348,12 +348,11 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         #self.fig=self.widget.fig
         #self.canvas = self.widget.canvas
 
-
         self.scan3d_stop.clicked.connect(self.stop)
         self.scan3d_suspend.clicked.connect(self.suspend)
         self.scan3d_update.setChecked(True)
         self.scan3d_plane.addItems(["xy", "yz", "xz"])
-        self.scan3d_fieldcomponent.addItems(["Bx","By","Bz","B norm"])
+        self.scan3d_fieldcomponent.addItems(["Bx", "By", "Bz", "B norm"])
 #        self.scan3d_plottype.addItems(["surface","surface and contour","wireframe"])
         self.scan3d_plottype.addItems(["surface", "wireframe", "quiver"])
 
@@ -368,7 +367,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self._ax = self.canvas.figure.add_subplot(projection="3d")
         self._ax.view_init(30, 30)
         self.plot_object = None
-        self.quiver_mode=False
+        self.quiver_mode = False
 
     def stop(self):
         self.working_thread.stop()
@@ -497,7 +496,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.canvas.draw()
 
 
-
 # The main class
 class MainWindow(QMainWindow,Ui_MainWindow):
     AXIS_3D = ["x", "y", "z"]
@@ -571,10 +569,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         #self.start_scan.setEnabled(False)
 
         # datas
-        self.vol_path_3d_data = {}
-        self.scan()
+        self.vol_path_3d_data = {"volumes":{},"paths":{}}
 
-        
     def check_state(self, *args, **kwargs):
         sender = self.sender()
         validator = sender.validator()
@@ -589,7 +585,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def loadScanParam(self):
         name, _ = QFileDialog.getOpenFileName(self, "Load scan file")
-        print(json.loads(open(name)))
+        print(json.loads(open(name).read()))
         # need to create vol and path from there. This mean updating the interface and click or execute directly the functions.
         # the problem is how do we know the coordinates of the point since they can change from one volume to another.
         # or shall we go from position to path in one click hiding the volume part?
@@ -612,7 +608,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         if button == QMessageBox.Yes:
             # removing space, volume and paths ids
-            self.pyrame.call("deinit_space@paths","space_1")
+            # we should also remove paths and volumes
+            self.pyrame.call("deinit_space@paths", "space_1")
             for i in range(self.volume_choice.count()):
                 print(self.volume_choice.itemText(i))
                 self.pyrame.call("deinit_volume@paths",self.volume_choice.itemText(i))
@@ -645,20 +642,21 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             r = ""
             for a in self.AXIS_3D:
                 cr = getattr(self,"field_range_%s"% a).currentText()[0]  # only the first character means a,0,1,2,3,c
-                if cr=='c':
+                if cr == 'c':
                     cr ='a'
                 r += cr
             retcode, res = self.pyrame.call("measure@ls_460", "gaussmeter",r)
             if retcode == 1:
                 Bx, By, Bz, Bn =res.split(",")
+            else:
+                return
         else:
-            retcode = 1
             Bx, By, Bz, Bn = values.split(",")
-        if retcode == 1:
-            self.field_x.setText(Bx)
-            self.field_y.setText(By)
-            self.field_z.setText(Bz)
-            self.field_norm.setText(Bn)
+
+        self.field_x.setText(Bx)
+        self.field_y.setText(By)
+        self.field_z.setText(Bz)
+        self.field_norm.setText(Bn)
 
     def setInitialValues(self):
         """
@@ -779,24 +777,24 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         dlg.lineEditField.setText("vol_%d" % self.volume_nid)
         if dlg.exec_():
             vol_id = dlg.lineEditField.text()
+            math_module = "prism"
+            amth_function = "prism"
             retcode, res = self.pyrame.call("init_volume@paths",
                                            vol_id,
                                            "space_1",
-                                           "prism",
-                                           "prism",
+                                           math_module,
+                                           math_function,
                                            new_coords,
                                            ext_axis,
                                            "%s" % (axis_min+origin[c2]),
                                            "%s" % (axis_max+origin[c2]))
             if retcode == 1:
                 self.vol_path_3d_data["volumes"]={
-                    vol_id: {
-                        "origin": origin,
-                        "ext_axis": ext_axis,
-                        "axis_min": axis_min,
-                        "axis_max": axis_max,
-                        "all_coords": all_coords
-                        }
+                    vol_id: {"pyrame_string": [vol_id, "space_1",
+                                               math_module,math_function, new_coords, ext_axis,
+                                           "%s" % (axis_min+origin[c2]),
+                                           "%s" % (axis_max+origin[c2])]
+                             }
                 }
                 self.create_path.setEnabled(True)
                 self.delete_volume.setEnabled(True)
@@ -814,6 +812,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             if self.volume_choice.count() == 0:
                 self.delete_volume.setEnabled(False)
                 self.create_path.setEnabled(False)
+            # remove from dict
+            self.vol_path_3d_data["volumes"].pop(vol_id)
 
     def createPath(self):
         map_xyzton={"x":"1","y":"2","z":"3"}
@@ -836,16 +836,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             if retcode == 1:
                 self.vol_path_3d_data["paths"] = {
                     path_id: {
-                        "vol_id": vol_id,
-                        "scan_x_step": scan_x_step,
-                        "scan_y_step": scan_y_step,
-                        "scan_z_step": scan_z_step,
-                        "path_order": path_order,
-                        "path_type": path_type,
-                        "path_directions": path_directions
-                        }
+                        "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions]
+                    }
                 }
-
                 self.start_scan.setEnabled(True)
                 self.delete_path.setEnabled(True)
                 self.path_nid += 1
@@ -861,7 +854,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             if self.path_choice.count() == 0:
                 self.delete_path.setEnabled(False)
                 self.start_scan.setEnabled(False)
-                
+
+            self.vol_path_3d_data["paths"].pop(path_id)
+
     def reportProgress(self,n):
         self.x_global.setText(f"{n}")
         
@@ -880,37 +875,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.scan3d_plot.scan3d_stop.setText("Close")
         self.scan3d_plot.scan3d_suspend.setEnabled(False)
 
-    def scan3D(self):
-        if self.thread_started:
-            print("========================here=======")
-            self.worker.stop()
-            self.thread_started = False
-
-        else:
-            self.thread_started = True
-            self.thread = QThread()
-
-            move_params=[]
-            self.worker = MUWorker(move_params,self.pyrame)
-
-            # Step 4: Move worker to the thread
-            self.worker.moveToThread(self.thread)
-
-            # Step 5: Connect signals and slots
-            self.thread.started.connect(self.worker.run)
-            self.worker.finished.connect(self.thread.quit)
-            self.worker.finished.connect(self.worker.deleteLater)
-            self.thread.finished.connect(self.thread.deleteLater)
-
-#            self.worker.finished.connect(self.scan3d_finished_scan)
-#            self.worker.progress.connect(self.scan3d_showProgress)
-            self.worker.field.connect(self.reportField)
-            # Step 6: Start the thread
-            self.thread.start()
-
-
     def scan(self):
-
         move_params = [self.path_choice.currentText()]
         strategy = ["undef"]
         speed = []
@@ -948,8 +913,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.scan3d_plot.init_plot_data(data_structure)
         self.scan3d_plot.show()
         self.thread.start()
-
-
 
                 
 if __name__ == "__main__":
