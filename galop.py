@@ -1,20 +1,39 @@
 #! coding: utf-8
 
-import sys,time
+# Generic imports
+import sys, time, json
+import numpy as np
+
+#PyQt Imports
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QDialog,
     QWidget,
     QDialogButtonBox,
-    QVBoxLayout, QHBoxLayout, QGridLayout,
+    QVBoxLayout, QGridLayout,
     QLabel,
     QMessageBox,
     QFileDialog,
     QLineEdit,
     QComboBox
 )
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, QTimer
+from PyQt5.QtGui import QDoubleValidator, QValidator
+
+# matplotlib imports
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import axes3d
+from matplotlib import cm
+
+# Ui imports
+from galop_ui import Ui_MainWindow
+from scan3dwidget_ui import Ui_Form
+
+# pyrame
+import bindpyrame
+
 
 module_to_start = """
 cmdmod /opt/pyrame/cmd_serial.xml &
@@ -24,23 +43,8 @@ cmdmod /opt/pyrame/cmd_motion.xml &
 cmdmod /opt/pyrame/cmd_paths.xml &
 cmdmod /opt/pyrame/cmd_ls_460.xml &
 """
-_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf = 10, -1, 1, 10, 0, 2, 10, -3, -1
 
-import json
-import numpy as np
-from matplotlib.backends.backend_qt5agg import FigureCanvas
-from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import axes3d
-from matplotlib import cm
-
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDoubleValidator,QValidator
-
-from galop_ui import Ui_MainWindow
-from scan3d_ui import Ui_Dialog
-from scan3dwidget_ui import Ui_Form
-
-import bindpyrame
+_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf = 20, -2, 2, 20, -2, 2, 20, -2, 2
 
 # datas should be taken from a file
 initial_values = {
@@ -214,13 +218,13 @@ class MUWorker(QObject):
                 position = "%f,%f,%f" % (x, y ,z)
                 field = "%f,%f,%f,%f" % (bx, by, bz , bn
                                          )
-                print("In worker ", x,y,z,i,i_x+i_y*lx+i_z*lx*lz)
+
                 self.field.emit("%s;%s" % (position, field))
                 self.progress.emit(100.*i/(nb_points-1))
                 i += 1
                 if i == nb_points:
                     self._isrunning = False
-                time.sleep(0.1)
+                time.sleep(1)
 
         self.finished.emit()
 
@@ -311,19 +315,31 @@ class askForName(QDialog):
             self.setLayout(self.layout)
 
 # 3D scan class
-class Scan3dPlotWidget(QWidget, Ui_Form):
-    def __init__(self, parent=None):
-        super(Scan3dPlotWidget,self).__init__(parent)
-        self.setupUi(self)
-        self.stop.clicked.connect(self.close)
+#class Scan3dPlotWidget(QWidget, Ui_Form):
+#    def __init__(self, parent=None):
+#        super(Scan3dPlotWidget,self).__init__(parent)
+#        self.setupUi(self)
+#        self.stop.clicked.connect(self.close)
 
 
 # 3D scan class
-class Scan3dPlotDialog(QDialog, Ui_Dialog):
+#class Scan3dPlotDialog(QDialog, Ui_Dialog):
+class Scan3dPlotDialog(QDialog, Ui_Form):
+
     def __init__(self, working_thread, parent=None):
         super(Scan3dPlotDialog, self).__init__(parent)
         self.working_thread = working_thread
 
+        # needed for the plot widget
+        # and need to add
+        # from matplotlib.backends.backend_qt5agg import FigureCanvas
+        # and replace
+        # self.canvas = QtWidgets.QWidget(Form)
+        # by
+        #self.canvas = FigureCanvas(self.fig) #QtWidgets.QWidget(Form)
+        # in the pyuic file
+
+        self.fig = Figure()  #figsize=(5, 3))
         self.setupUi(self)
 
         #self.fig = Figure(figsize=(5, 3))
@@ -344,13 +360,15 @@ class Scan3dPlotDialog(QDialog, Ui_Dialog):
         self.scan3d_plottype.currentTextChanged.connect(self.update_plot_base)
         self.scan3d_plane.currentTextChanged.connect(self.update_layers)
         self.scan3d_layer.currentTextChanged.connect(self.update_plot_params)
+        self.scan3d_layer_slider.valueChanged.connect(self.update_plot_params_slider)
+
         self.scan3d_fieldcomponent.currentTextChanged.connect(self.update_field)
 
         #self.fig.set_canvas(self.canvas)
         self._ax = self.canvas.figure.add_subplot(projection="3d")
         self._ax.view_init(30, 30)
         self.plot_object = None
-
+        self.quiver_mode=False
 
     def stop(self):
         self.working_thread.stop()
@@ -382,16 +400,28 @@ class Scan3dPlotDialog(QDialog, Ui_Dialog):
         self.scan3d_layer.clear()
         if plane == "xy":
             self.scan3d_layer.addItems([str(i) for i in self.Z])
+            self.scan3d_layer_slider.setMinimum(0)
+            self.scan3d_layer_slider.setMaximum(len(self.Z)-1)
             self._ax.set_xlabel("Y")
             self._ax.set_ylabel("X")
         elif plane == "yz":
             self.scan3d_layer.addItems([str(i) for i in self.X])
+            self.scan3d_layer_slider.setMinimum(0)
+            self.scan3d_layer_slider.setMaximum(len(self.X)-1)
             self._ax.set_xlabel("Z")
             self._ax.set_ylabel("Y")
         elif plane == "xz":
             self.scan3d_layer.addItems([str(i) for i in self.Y])
+            self.scan3d_layer_slider.setMinimum(0)
+            self.scan3d_layer_slider.setMaximum(len(self.Y)-1)
             self._ax.set_xlabel("Z")
             self._ax.set_ylabel("X")
+        self.update_plot_params()
+
+
+    def update_plot_params_slider(self):
+        index = self.scan3d_layer_slider.value()
+        self.scan3d_layer.setCurrentIndex(index)
         self.update_plot_params()
 
     def update_plot_params(self):
@@ -425,10 +455,16 @@ class Scan3dPlotDialog(QDialog, Ui_Dialog):
             self.update_plot_base()
 
     def update_plot_base(self):
-        print("updating plot base")
         if self.plot_object:
             self._ax.collections.remove(self.plot_object)
         if self.scan3d_plottype.currentText() == "surface":
+            if self.quiver_mode:
+                self.scan3d_plane.setEnabled(True)
+                self.scan3d_layer_slider.setEnabled(True)
+                self.scan3d_fieldcomponent.setEnabled(True)
+                self.scan3d_layer.setEnabled(True)
+                self.quiver_mode = False
+
             self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
         #elif self.scan3d_plottype.currentText() == "surface and contour":
         #    self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
@@ -436,10 +472,22 @@ class Scan3dPlotDialog(QDialog, Ui_Dialog):
         #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='x', offset=self.X_plot.min(), cmap=cm.coolwarm)
         #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='y', offset=self.Y_plot.min(), cmap=cm.coolwarm)
         elif self.scan3d_plottype.currentText() == "wireframe":
+            if self.quiver_mode:
+                self.scan3d_plane.setEnabled(True)
+                self.scan3d_layer_slider.setEnabled(True)
+                self.scan3d_fieldcomponent.setEnabled(True)
+                self.scan3d_layer.setEnabled(True)
+                self.quiver_mode = False
+
             self.plot_object = self._ax.plot_wireframe(self.X_plot, self.Y_plot, self.Z_plot,rstride=1, cstride=1, cmap="viridis")
         elif self.scan3d_plottype.currentText() == "quiver":
-            x,y,z = np.meshgrid(self.X, self.Y, self.Z)
-            print(x.shape,y.shape,z.shape,self.Field[:, :, :, 0].shape)
+            if not self.quiver_mode:
+                self.scan3d_plane.setEnabled(False)
+                self.scan3d_layer_slider.setEnabled(False)
+                self.scan3d_fieldcomponent.setEnabled(False)
+                self.scan3d_layer.setEnabled(False)
+                self.quiver_mode = True
+            x, y, z = np.meshgrid(self.X, self.Y, self.Z)
             self.plot_object = self._ax.quiver(x,y,z,
                                                self.Field[:, :, :, 0],
                                                self.Field[:, :, :, 1],
