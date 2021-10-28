@@ -221,7 +221,7 @@ class MUWorker(QObject):
                                          )
 
                 self.field.emit("%s;%s" % (position, field))
-                self.progress.emit(100.*i/(nb_points-1))
+                self.progress.emit(int(100.*i/(nb_points-1)))
                 i += 1
                 if i == nb_points:
                     self._isrunning = False
@@ -236,15 +236,10 @@ class MUWorker(QObject):
         self._issuspended = not self._issuspended
 
 
-class Worker(QObject):
+class Worker(MUWorker):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
     field = pyqtSignal(str)
-
-    def __init__(self, move_params, pyrame):
-        super().__init__()
-        self.pyrame = pyrame
-        self.move_params = move_params
 
     def run(self):
 
@@ -904,7 +899,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         self.thread = QThread()
 
-        self.worker = MUWorker(move_params,self.pyrame)
+        self.worker = Worker(move_params, self.pyrame) #MUWorker(move_params, self.pyrame)
 
         # Step 4: Move worker to the thread
         self.worker.moveToThread(self.thread)
