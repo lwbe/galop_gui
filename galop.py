@@ -866,7 +866,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.updateGaussmeterWidget(f)
 
         # update plot
-        self.scan3d_plot.update_plot_data(p,f)
+        self.scan3d_plot.update_plot_data(p, f)
+        # write datafile
 
     def scan3d_showProgress(self, i):
         self.scan3d_plot.scan3d_progress.setValue(i)
@@ -874,6 +875,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def scan3d_finished_scan(self):
         self.scan3d_plot.scan3d_stop.setText("Close")
         self.scan3d_plot.scan3d_suspend.setEnabled(False)
+        # close data file
+
 
     def scan(self):
         move_params = [self.path_choice.currentText()]
@@ -905,6 +908,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.worker.finished.connect(self.scan3d_finished_scan)
         self.worker.progress.connect(self.scan3d_showProgress)
         self.worker.field.connect(self.reportField)
+
+        # open data file
+        #data_filename = "DATADIR/"
+        #name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file',ini)
         # Step 6: Start the thread
         self.thread.start()
 
