@@ -383,7 +383,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
 
     def init_plot_data(self, data_structure):
         nx, xi, xf, ny, yi, yf, nz, zi, zf = data_structure
-        self.Field = np.ndarray([nx, ny, nz, 4])
+        self.Field = np.zeros([nx, ny, nz, 4])
         self.X = np.linspace(xi, xf, nx)
         self.Y = np.linspace(yi, yf, ny)
         self.Z = np.linspace(zi, zf, nz)
