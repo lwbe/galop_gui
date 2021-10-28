@@ -2,6 +2,7 @@
 
 # Generic imports
 import sys, time, json
+from datetime import datetime
 import numpy as np
 
 #PyQt Imports
@@ -778,7 +779,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if dlg.exec_():
             vol_id = dlg.lineEditField.text()
             math_module = "prism"
-            amth_function = "prism"
+            math_function = "prism"
             retcode, res = self.pyrame.call("init_volume@paths",
                                            vol_id,
                                            "space_1",
@@ -868,6 +869,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         # update plot
         self.scan3d_plot.update_plot_data(p, f)
         # write datafile
+        self.data_file.write("0\t0\t")
+        gp = [float(i)  for i in p.split(',')]
+        self.data_file.write("\t".join(p.split(",")))
+        self.data_file.write("\t%f" % (gp[0]+float(self.x_origin.text())))
+        self.data_file.write("\t%f" % (gp[1]+float(self.y_origin.text())))
+        self.data_file.write("\t%f\t" % (gp[2]+float(self.z_origin.text())))
+        self.data_file.write("\t" % datetime.now().strftime("%Y%m%d")
+        self.data_file.write("\t %d" % (time.time() - self.start_acq_time))
+        self.data_file.write("\taaa\n")
 
     def scan3d_showProgress(self, i):
         self.scan3d_plot.scan3d_progress.setValue(i)
@@ -876,7 +886,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.scan3d_plot.scan3d_stop.setText("Close")
         self.scan3d_plot.scan3d_suspend.setEnabled(False)
         # close data file
-
+        self.data_file.close()
 
     def scan(self):
         move_params = [self.path_choice.currentText()]
@@ -910,8 +920,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.worker.field.connect(self.reportField)
 
         # open data file
-        #data_filename = "DATADIR/"
-        #name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file',ini)
+        self.open_data_filename()
+        self.start_acq_time = time.time()
         # Step 6: Start the thread
         self.thread.start()
 
@@ -921,7 +931,28 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.scan3d_plot.show()
         self.thread.start()
 
-                
+    def open_data_filename(self):
+        DATADIR = "/root/Gaussmeter/Data/"
+        data_prefix = "gaussbench_data"
+        data_filename = (%s%s%s) % (DATADIR,data_prefix,datetime.now().strftime("%Y_%m_%d_%H.%M"))
+
+        name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file',dir=data_filename)
+        if name:
+            self.data_file = open(name)
+            # the header
+            self.data_file.write("# units are Tesla, degrees, mm and s\n")
+            self.data_file.write("# Local coordinate system origin: x0=%s, y0=%s, z0=%s\n") % (
+                self.x_origin.text(),self.y_origin.text(),self.z_origin.text()
+            )
+            retcode, res = self.pyrame.call("free_query@ls_460","gaussmeter","SNUM?")
+            if retcode == 1:
+                self.data_file.write("# gaussmeter probe %s \n" % res)
+            else:
+                self.data_file.write("# gaussmeter probe ERROR %s \n" % res)
+            self.data_file.write("# mag ang       probe ang       x glob  y glob  z glob  x local y local z local X Bfield                Y Bfield        Z Bfield        V Bfield        time                    range
+\n")
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
