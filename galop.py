@@ -45,7 +45,7 @@ cmdmod /opt/pyrame/cmd_paths.xml &
 cmdmod /opt/pyrame/cmd_ls_460.xml &
 """
 
-_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf = 20, -2, 2, 20, -2, 2, 20, -2, 2
+_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf = 10, -2, 2, 10, -2, 2, 10, -2, 2
 
 # datas should be taken from a file
 initial_values = {
@@ -874,9 +874,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.data_file.write("\t".join(p.split(",")))
         self.data_file.write("\t%f" % (gp[0]+float(self.x_origin.text())))
         self.data_file.write("\t%f" % (gp[1]+float(self.y_origin.text())))
-        self.data_file.write("\t%f\t" % (gp[2]+float(self.z_origin.text())))
-        self.data_file.write("\t" % datetime.now().strftime("%Y%m%d")
-        self.data_file.write("\t %d" % (time.time() - self.start_acq_time))
+        self.data_file.write("\t%f" % (gp[2]+float(self.z_origin.text())))
+        self.data_file.write("\t%s" % datetime.now().strftime("%Y%m%d"))
+        self.data_file.write("\t%d" % int(time.time() - self.start_acq_time))
         self.data_file.write("\taaa\n")
 
     def scan3d_showProgress(self, i):
@@ -934,23 +934,20 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def open_data_filename(self):
         DATADIR = "/root/Gaussmeter/Data/"
         data_prefix = "gaussbench_data"
-        data_filename = (%s%s%s) % (DATADIR,data_prefix,datetime.now().strftime("%Y_%m_%d_%H.%M"))
+        data_filename = "%s%s%s" % (DATADIR,data_prefix,datetime.now().strftime("%Y_%m_%d_%H.%M"))
 
-        name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file',dir=data_filename)
+        name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file',directory=data_filename)
         if name:
-            self.data_file = open(name)
+            self.data_file = open(name,"w")
             # the header
             self.data_file.write("# units are Tesla, degrees, mm and s\n")
-            self.data_file.write("# Local coordinate system origin: x0=%s, y0=%s, z0=%s\n") % (
-                self.x_origin.text(),self.y_origin.text(),self.z_origin.text()
-            )
+            self.data_file.write("# Local coordinate system origin: x0=%s, y0=%s, z0=%s\n" % (self.x_origin.text(),self.y_origin.text(),self.z_origin.text()))
             retcode, res = self.pyrame.call("free_query@ls_460","gaussmeter","SNUM?")
             if retcode == 1:
                 self.data_file.write("# gaussmeter probe %s \n" % res)
             else:
                 self.data_file.write("# gaussmeter probe ERROR %s \n" % res)
-            self.data_file.write("# mag ang       probe ang       x glob  y glob  z glob  x local y local z local X Bfield                Y Bfield        Z Bfield        V Bfield        time                    range
-\n")
+            self.data_file.write("# mag ang       probe ang       x glob  y glob  z glob  x local y local z local X Bfield                Y Bfield        Z Bfield        V Bfield        time                    range\n")
 
 
 if __name__ == "__main__":
