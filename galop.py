@@ -23,7 +23,7 @@ from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QDoubleValidator, QValidator
 
 # matplotlib imports
-from matplotlib.backends.backend_qt5agg import FigureCanvas
+#from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import axes3d
 from matplotlib import cm
@@ -756,15 +756,19 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         axis_min = float(getattr(self, "min_extrusion").text())
         axis_max = float(getattr(self, "max_extrusion").text())
+        c0_values = []
+        c1_values = []
         new_coords = ""
-        all_coords = []
+        #all_coords = []
         for i in range(self.points_3d.count()):
             coords = self.points_3d.item(i).text().split(',')
-            all_coords.append(coords)
-            new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
-            
+            #all_coords.append(coords)
+            new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0], float(coords[c1]) + origin[c1])
+            c0_values.append(float(coords[c0]) + origin[c0])
+            c1_values.append(float(coords[c1]) + origin[c1])
+
         coords = self.points_3d.item(0).text().split(',')
-        all_coords.append(coords)
+        #all_coords.append(coords)
         new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
 
         # we need to ask for a name for the vol_id
@@ -785,11 +789,40 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                            "%s" % (axis_min+origin[c2]),
                                            "%s" % (axis_max+origin[c2]))
             if retcode == 1:
+                if ext_axis == "z":
+                    x_plot_min = np.min(c0_values)
+                    x_plot_max = np.max(c0_values)
+                    y_plot_min = np.min(c1_values)
+                    y_plot_max = np.max(c1_values)
+                    a1 = axis_min+origin[c2]
+                    a2 = axis_max+origin[c2]
+                    z_plot_min = a1 if a1 < a2 else a2
+                    z_plot_max = a1 if a1 > a2 else a2
+                elif ext_axis == "y":
+                    x_plot_min = np.min(c0_values)
+                    x_plot_max = np.max(c0_values)
+                    a1 = axis_min + origin[c2]
+                    a2 = axis_max + origin[c2]
+                    y_plot_min = a1 if a1 < a2 else a2
+                    y_plot_max = a1 if a1 > a2 else a2
+                    z_plot_min = np.min(c1_values)
+                    z_plot_max = np.max(c1_values)
+                elif ext_axis == "x":
+                    a1 = axis_min + origin[c2]
+                    a2 = axis_max + origin[c2]
+                    x_plot_min = a1 if a1 < a2 else a2
+                    x_plot_max = a1 if a1 > a2 else a2
+                    y_plot_min = np.min(c0_values)
+                    y_plot_max = np.max(c0_values)
+                    z_plot_min = np.min(c1_values)
+                    z_plot_max = np.max(c1_values)
+
                 self.vol_path_3d_data["volumes"]={
                     vol_id: {"pyrame_string": [vol_id, "space_1",
                                                math_module,math_function, new_coords, ext_axis,
                                            "%s" % (axis_min+origin[c2]),
-                                           "%s" % (axis_max+origin[c2])]
+                                           "%s" % (axis_max+origin[c2])],
+                             "coords": [x_plot_min,x_plot_max,y_plot_min,y_plot_max,z_plot_min,z_plot_max]
                              }
                 }
                 self.create_path.setEnabled(True)
@@ -812,7 +845,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.vol_path_3d_data["volumes"].pop(vol_id)
 
     def createPath(self):
-        map_xyzton={"x":"1","y":"2","z":"3"}
+        map_xyzton={
+            "x": "1",
+            "y": "2",
+            "z": "3"
+        }
 
         vol_id = self.volume_choice.currentText()
         path_order = "".join([map_xyzton[i] for i in self.path.currentText()])
@@ -832,7 +869,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             if retcode == 1:
                 self.vol_path_3d_data["paths"] = {
                     path_id: {
-                        "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions]
+                        "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
+                        "vol_id": vol_id,
+                        "steps": [scan_x_step,scan_y_step,scan_z_step]
+
                     }
                 }
                 self.start_scan.setEnabled(True)
@@ -884,7 +924,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.data_file.close()
 
     def scan(self):
-        move_params = [self.path_choice.currentText()]
+        path_id = self.path_choice.currentText()
+        move_params = [path_id]
         strategy = ["undef"]
         speed = []
         acc = []
@@ -921,7 +962,14 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.thread.start()
 
         self.scan3d_plot = Scan3dPlotDialog(self.worker)
-        data_structure = [_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf]
+        vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
+        steps = self.vol_path_3d_data["paths"][path_id]["steps"]
+        coords = self.vol_path_3d_data["volumes"][vol_id]["coords"]
+        Nx = int((coords[1] - coords[0]) / steps[0])
+        Ny = int((coords[3] - coords[2]) / steps[1])
+        Nz = int((coords[5] - coords[4]) / steps[2])
+        #data_structure = [_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf]
+        data_structure = [Nx, coords[0], coords[1], Ny, coords[2], coords[3], Nz, coords[4], coords[5]]
         self.scan3d_plot.init_plot_data(data_structure)
         self.scan3d_plot.show()
         self.thread.start()
@@ -931,7 +979,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         data_prefix = "gaussbench_data"
         data_filename = "%s%s%s" % (DATADIR,data_prefix,datetime.now().strftime("%Y_%m_%d_%H.%M"))
 
-        name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file',directory=data_filename)
+        name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file', directory=data_filename)
         if name:
             self.data_file = open(name,"w")
             # the header
