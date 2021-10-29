@@ -350,7 +350,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.scan3d_plane.addItems(["xy", "yz", "xz"])
         self.scan3d_fieldcomponent.addItems(["Bx", "By", "Bz", "B norm"])
 #        self.scan3d_plottype.addItems(["surface","surface and contour","wireframe"])
-        self.scan3d_plottype.addItems(["surface", "wireframe", "quiver"])
+        self.scan3d_plottype.addItems(["surface", "wireframe", "contour", "quiver"])
 
         self.scan3d_plottype.currentTextChanged.connect(self.update_plot_base)
         self.scan3d_plane.currentTextChanged.connect(self.update_layers)
@@ -413,7 +413,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
             self._ax.set_ylabel("X")
         self.update_plot_params()
 
-
     def update_plot_params_slider(self):
         index = self.scan3d_layer_slider.value()
         self.scan3d_layer.setCurrentIndex(index)
@@ -453,46 +452,45 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         if self.scan3d_update.isChecked():
             self.update_plot_base()
 
-    def update_plot_base(self):
-        if self.plot_object:
-            self._ax.collections.remove(self.plot_object)
-        if self.scan3d_plottype.currentText() == "surface":
-            if self.quiver_mode:
-                self.scan3d_plane.setEnabled(True)
-                self.scan3d_layer_slider.setEnabled(True)
-                self.scan3d_fieldcomponent.setEnabled(True)
-                self.scan3d_layer.setEnabled(True)
-                self.quiver_mode = False
-
-            self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
-        #elif self.scan3d_plottype.currentText() == "surface and contour":
-        #    self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
-        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='z', offset=self.Z_plot.min(), cmap=cm.coolwarm)
-        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='x', offset=self.X_plot.min(), cmap=cm.coolwarm)
-        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='y', offset=self.Y_plot.min(), cmap=cm.coolwarm)
-        elif self.scan3d_plottype.currentText() == "wireframe":
-            if self.quiver_mode:
-                self.scan3d_plane.setEnabled(True)
-                self.scan3d_layer_slider.setEnabled(True)
-                self.scan3d_fieldcomponent.setEnabled(True)
-                self.scan3d_layer.setEnabled(True)
-                self.quiver_mode = False
-
-            self.plot_object = self._ax.plot_wireframe(self.X_plot, self.Y_plot, self.Z_plot,rstride=1, cstride=1, cmap="viridis")
-        elif self.scan3d_plottype.currentText() == "quiver":
+    def set_quiver_mode(self,flag):
+        if flag:
             if not self.quiver_mode:
                 self.scan3d_plane.setEnabled(False)
                 self.scan3d_layer_slider.setEnabled(False)
                 self.scan3d_fieldcomponent.setEnabled(False)
                 self.scan3d_layer.setEnabled(False)
                 self.quiver_mode = True
-            print("quiver " ,self.X,self.Y,self.Z)
+        else:
+            if self.quiver_mode:
+                self.scan3d_plane.setEnabled(True)
+                self.scan3d_layer_slider.setEnabled(True)
+                self.scan3d_fieldcomponent.setEnabled(True)
+                self.scan3d_layer.setEnabled(True)
+                self.quiver_mode = False
+
+    def update_plot_base(self):
+        if self.plot_object:
+            self._ax.collections.remove(self.plot_object)
+        if self.scan3d_plottype.currentText() == "surface":
+            self.set_quiver_mode(False)
+            self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="cm.coolwarm", edgecolor="none")
+        #elif self.scan3d_plottype.currentText() == "surface and contour":
+        #    self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
+        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='z', offset=self.Z_plot.min(), cmap=cm.coolwarm)
+        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='x', offset=self.X_plot.min(), cmap=cm.coolwarm)
+        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='y', offset=self.Y_plot.min(), cmap=cm.coolwarm)
+        elif self.scan3d_plottype.currentText() == "wireframe":
+            self.set_quiver_mode(False)
+            self.plot_object = self._ax.plot_wireframe(self.X_plot, self.Y_plot, self.Z_plot,
+                                                       rstride=1, cstride=1, cmap="cm.coolwarm")
+        elif self.scan3d_plottype.currentText() == "contour":
+            self.set_quiver_mode(False)
+            self.plot_object = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot,
+                                                cmap="cm.coolwarm")
+        elif self.scan3d_plottype.currentText() == "quiver":
+            self.set_quiver_mode(True)
             x, y, z = np.meshgrid(self.X, self.Y, self.Z)
-            print(x,y,z)
-            print(self.Field[:, :, :, 0],
-                                               self.Field[:, :, :, 1],
-                                               self.Field[:, :, :, 2])
-            self.plot_object = self._ax.quiver(x,y,z,
+            self.plot_object = self._ax.quiver(x, y, z,
                                                self.Field[:, :, :, 0],
                                                self.Field[:, :, :, 1],
                                                self.Field[:, :, :, 2],
