@@ -439,6 +439,10 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         x, y, z = [float(i) for i in position.split(",")]
         # give the index in the coordinates
         #print(x,self.X,np.where(np.isclose(self.X,  x)))
+        print("coords",x,y,z)
+        print("coords array X",self.X)
+        print("coords array Y",self.Y)
+        print("coords array Z",self.Z)
         i = np.where(np.isclose(self.X,  x))[0][0]
         j = np.where(np.isclose(self.Y,  y))[0][0]
         k = np.where(np.isclose(self.Z,  z))[0][0]
@@ -482,7 +486,12 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
                 self.scan3d_fieldcomponent.setEnabled(False)
                 self.scan3d_layer.setEnabled(False)
                 self.quiver_mode = True
+            print("quiver " ,self.X,self.Y,self.Z)
             x, y, z = np.meshgrid(self.X, self.Y, self.Z)
+            print(x,y,z)
+            print(self.Field[:, :, :, 0],
+                                               self.Field[:, :, :, 1],
+                                               self.Field[:, :, :, 2])
             self.plot_object = self._ax.quiver(x,y,z,
                                                self.Field[:, :, :, 0],
                                                self.Field[:, :, :, 1],
@@ -588,8 +597,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def saveScanParam(self):
         name, _ = QFileDialog.getSaveFileName(self, 'Save scan file', filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
-        with open(name, 'w') as file:
-            file.write(json.dumps(self.vol_path_3d_data))
+        if name:
+            with open(name, 'w') as file:
+                file.write(json.dumps(self.vol_path_3d_data))
 
     def exitApplication(self):
         """
@@ -871,7 +881,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                     path_id: {
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
-                        "steps": [scan_x_step,scan_y_step,scan_z_step]
+                        "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)]
 
                     }
                 }
@@ -965,11 +975,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
         steps = self.vol_path_3d_data["paths"][path_id]["steps"]
         coords = self.vol_path_3d_data["volumes"][vol_id]["coords"]
-        Nx = int((coords[1] - coords[0]) / steps[0])
-        Ny = int((coords[3] - coords[2]) / steps[1])
-        Nz = int((coords[5] - coords[4]) / steps[2])
+        Nx = int((10.*coords[1] - 10*coords[0]) / (10.*steps[0])) + 1
+        Ny = int((10.*coords[3] - 10*coords[2]) / (10.*steps[1])) + 1
+        Nz = int((10.*coords[5] - 10*coords[4]) / (10.*steps[2])) + 1
         #data_structure = [_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf]
+        print("steps ",steps,(coords[1] - coords[0]) / steps[0],(coords[3] - coords[2]) / steps[1],(coords[5] - coords[4]) / steps[2])
         data_structure = [Nx, coords[0], coords[1], Ny, coords[2], coords[3], Nz, coords[4], coords[5]]
+        print("Data structure",data_structure)
         self.scan3d_plot.init_plot_data(data_structure)
         self.scan3d_plot.show()
         self.thread.start()
