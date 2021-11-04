@@ -35,6 +35,7 @@ from scan3dwidget_ui import Ui_Form
 # pyrame
 import bindpyrame
 
+import paths
 
 module_to_start = """
 cmdmod /opt/pyrame/cmd_serial.xml &
@@ -117,11 +118,16 @@ pyrame_modules_configuration = {
     }
 }
 
-
+SIMULATE = True
 class Pyrame(object):
     def __init__(self,parent):
         self.module_port = {}
         self.parent = parent
+        self.simulated_position = [ 0, 0,0]
+        self.simulated_field = [ 0, 0,0, 0]
+        self.x_limits,self.y_limits, self.z_limits = None,None,None
+        self.x_step,self.y_step, self.z_step = None,None,None
+        self.points = None
 
      # Pyrame Stuff
     def initModules(self,pyrame_modules_configuration):
@@ -153,6 +159,75 @@ class Pyrame(object):
                              uid
                          )
 
+    def call_simulate(self, pyrame_func, *args):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        retval = "ok"
+        if pyrame_func.startswith("init@"):
+            pass
+        elif pyrame_func.startswith("config@"):
+            pass
+        elif pyrame_func.startswith("get_position@"):
+            retval = ",".join([str(i) for i in self.simulated_position])
+        elif pyrame_func.startswith("measure@"):
+            retval = ",".join([str(i) for i in self.simulated_field])
+            print("measure ", retval)
+        elif pyrame_func.startswith("move_space@"):
+            self.simulated_position = [float(args[1]), float(args[2]), float(args[3])]
+        elif pyrame_func.startswith("init_volume"):
+            # extract the points"
+            c0, c1 = [], []
+            for i in args[4].split(";")[:-1]:
+                x, y = [float(j) for j in i.split(",")]
+                c0.append(x)
+                c1.append(y)
+            if args[5] == "z":
+                self.x_limits = [np.min(c0), np.max(c0)]
+                self.y_limits = [np.min(c1), np.max(c1)]
+                self.z_limits = [float(args[6]), float(args[7])]
+        elif pyrame_func.startswith("init_path"):
+            self.x_step = float(args[3])
+            self.y_step = float(args[4])
+            self.z_step = float(args[5])
+            self.order = args[6]
+            self.scan_type = args[7]
+            self.points = paths.generate_points2(*self.x_limits, self.x_step,
+                                                 *self.y_limits, self.y_step,
+                                                 *self.z_limits, self.z_step)
+            self.max_points= self.points.shape[0]
+            retval = str(self.max_points)
+        elif pyrame_func.startswith("move_first"):
+            self.current_point = 0
+            self.simulated_position = self.points[self.current_point]
+            x, y, z = self.simulated_position
+            bx = np.sin(np.pi * x) * np.cos(np.pi * y) * np.cos(np.pi * z)
+            by = -np.cos(np.pi * x) * np.sin(np.pi * y) * np.cos(np.pi * z)
+            bz = (np.sqrt(2.0 / 3.0) * np.cos(np.pi * x) * np.cos(np.pi * y) * np.sin(np.pi * z))
+            bn = np.sqrt(bx*bx + by*by + bz*bz)
+            self.simulated_field = [bx,by,bz,bn]
+            time.sleep(1)
+        elif pyrame_func.startswith("move_next"):
+            self.current_point += 1
+            print(self.current_point,self.max_points)
+            if self.current_point == self.max_points:
+                retval = "finished"
+            else:
+                self.simulated_position = self.points[self.current_point]
+                x, y, z = self.simulated_position
+                bx = np.sin(np.pi * x) * np.cos(np.pi * y) * np.cos(np.pi * z)
+                by = -np.cos(np.pi * x) * np.sin(np.pi * y) * np.cos(np.pi * z)
+                bz = (np.sqrt(2.0 / 3.0) * np.cos(np.pi * x) * np.cos(np.pi * y) * np.sin(np.pi * z))
+                bn = np.sqrt(bx * bx + by * by + bz * bz)
+                self.simulated_field = [bx, by, bz, bn]
+                time.sleep(1)
+        else:
+            print("pyrame call :", pyrame_func, args)
+
+        QApplication.restoreOverrideCursor()
+
+        return 1, retval
+
+
+
     def call(self, pyrame_func, *args):
         """
         Function to call pyrame module and prevent user action. Inform user in case of error
@@ -161,7 +236,10 @@ class Pyrame(object):
         :param args: the args of the function
         :return: the return of the pyrame module
         """
-        
+
+        if SIMULATE:
+            return self.call_simulate(pyrame_func, *args)
+
         QApplication.setOverrideCursor(Qt.WaitCursor)
         function, module = pyrame_func.split("@")
         retcode, res = bindpyrame.sendcmd("localhost",
@@ -182,10 +260,9 @@ class Pyrame(object):
         return retcode, res
 
 # thread for scan
-class MUWorker(QObject):
+class Worker(QObject):
     finished = pyqtSignal()
-    progress = pyqtSignal(int)
-    field = pyqtSignal(str)
+    field = pyqtSignal()
 
     def __init__(self, move_params, pyrame):
         super().__init__()
@@ -194,40 +271,6 @@ class MUWorker(QObject):
         self.move_params = move_params
         self._issuspended = False
 
-    def run(self):
-        lx, ly, lz = _Nx, _Ny, _Nz
-        nb_points = lx*ly*lz
-        xi, xf = _Xi, _Xf
-        yi, yf = _Yi, _Yf
-        zi, zf = _Zi, _Zf
-        i = 0
-        while self._isrunning:
-            if not self._issuspended:
-                i_z = int(i/(1.*ly*lx))
-                i_y = int((i-i_z*lx*ly)/(1.*lx))
-                i_x = int((i-i_z*lx*ly-i_y*lx))
-                x = xi+(xf-xi)/(lx-1.)*float(i_x)
-                y = yi+(yf-yi)/(ly-1.)*float(i_y)
-                z = zi+(zf-zi)/(lz-1.)*float(i_z)
-                #bx = -np.sin((x-z) ** 2 + y ** 2) / 10.
-                #by = (16. * x * (1-x) * y * (1-y) * np.sin(9 * np.pi * x) * np.sin(9 * np.pi * y))**2
-                #bz = x*np.exp(-((x-z)**2+y**2))
-                bx = np.sin(np.pi * x) * np.cos(np.pi * y) * np.cos(np.pi * z)
-                by = -np.cos(np.pi * x) * np.sin(np.pi * y) * np.cos(np.pi * z)
-                bz = (np.sqrt(2.0 / 3.0) * np.cos(np.pi * x) * np.cos(np.pi * y) * np.sin(np.pi * z))
-                bn = np.sqrt(bx*bx + by*by + bz*bz)
-                position = "%f,%f,%f" % (x, y ,z)
-                field = "%f,%f,%f,%f" % (bx, by, bz , bn
-                                         )
-
-                self.field.emit("%s;%s" % (position, field))
-                self.progress.emit(int(100.*i/(nb_points-1)))
-                i += 1
-                if i == nb_points:
-                    self._isrunning = False
-                time.sleep(1)
-
-        self.finished.emit()
 
     def stop(self):
         self._isrunning = False
@@ -235,31 +278,18 @@ class MUWorker(QObject):
     def suspend(self):
         self._issuspended = not self._issuspended
 
-
-class Worker(MUWorker):
-    finished = pyqtSignal()
-    progress = pyqtSignal(int)
-    field = pyqtSignal(str)
-
     def run(self):
-
         retcode, res = self.pyrame.call("move_first@paths", *self.move_params)
-        retcode, position = self.pyrame.call("get_position@paths", "space_1")
-        retcode, field = self.pyrame.call("measure@ls_460", "gaussmeter")
-
-        # create file and start writing it
-        print("data", position, field)
-        self.field.emit("%s;%s" % (position, field))
+        self.field.emit() #"%s;%s" % (position, field))
 
         run = True
         while run:
-            retcode, res = self.pyrame.call("move_next@paths", *self.move_params)
-            retcode, position = self.pyrame.call("get_position@paths", "space_1")
-            retcode, field = self.pyrame.call("measure@ls_460", "gaussmeter")
-            print("data", position, field)
-            self.field.emit("%s;%s" % (position, field))
-            if res == "finished":
-                run = False
+            if not self._issuspended:
+
+                retcode, res = self.pyrame.call("move_next@paths", *self.move_params)
+                self.field.emit()
+                if res == "finished" or not self._isrunning :
+                    run = False
 
         self.finished.emit()
 
@@ -421,6 +451,8 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
     def update_plot_params(self):
         plane = self.scan3d_plane.currentText()
         index_layer = self.scan3d_layer.currentIndex()
+        self.scan3d_layer_slider.setValue(index_layer)
+
         field_component_index = self.scan3d_fieldcomponent.currentIndex()
         if plane == "xy":
             self.X_plot, self.Y_plot = np.meshgrid(self.Y, self.X)
@@ -437,11 +469,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
     def update_plot_data(self,position,field):
         x, y, z = [float(i) for i in position.split(",")]
         # give the index in the coordinates
-        #print(x,self.X,np.where(np.isclose(self.X,  x)))
-        print("coords",x,y,z)
-        print("coords array X",self.X)
-        print("coords array Y",self.Y)
-        print("coords array Z",self.Z)
         i = np.where(np.isclose(self.X,  x))[0][0]
         j = np.where(np.isclose(self.Y,  y))[0][0]
         k = np.where(np.isclose(self.Z,  z))[0][0]
@@ -470,10 +497,14 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
 
     def update_plot_base(self):
         if self.plot_object:
-            self._ax.collections.remove(self.plot_object)
+            try:
+                self._ax.collections.remove(self.plot_object)
+            except:
+                pass
+
         if self.scan3d_plottype.currentText() == "surface":
             self.set_quiver_mode(False)
-            self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="cm.coolwarm", edgecolor="none")
+            self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap=cm.coolwarm, edgecolor="none")
         #elif self.scan3d_plottype.currentText() == "surface and contour":
         #    self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
         #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='z', offset=self.Z_plot.min(), cmap=cm.coolwarm)
@@ -482,11 +513,11 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         elif self.scan3d_plottype.currentText() == "wireframe":
             self.set_quiver_mode(False)
             self.plot_object = self._ax.plot_wireframe(self.X_plot, self.Y_plot, self.Z_plot,
-                                                       rstride=1, cstride=1, cmap="cm.coolwarm")
+                                                       rstride=1, cstride=1, cmap=cm.coolwarm)
         elif self.scan3d_plottype.currentText() == "contour":
             self.set_quiver_mode(False)
             self.plot_object = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot,
-                                                cmap="cm.coolwarm")
+                                                cmap=cm.coolwarm)
         elif self.scan3d_plottype.currentText() == "quiver":
             self.set_quiver_mode(True)
             x, y, z = np.meshgrid(self.X, self.Y, self.Z)
@@ -873,14 +904,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             path_id = dlg.lineEditField.text()
             path_type = "rr"
             path_directions = "ppp"
-            retcode,res = self.pyrame.call("init_path@paths",path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions)
+            retcode, res = self.pyrame.call("init_path@paths",path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions)
             if retcode == 1:
                 self.vol_path_3d_data["paths"] = {
                     path_id: {
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
                         "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)]
-
                     }
                 }
                 self.start_scan.setEnabled(True)
@@ -888,6 +918,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.path_nid += 1
                 self.path_choice.addItem(path_id)
                 self.path_choice.setCurrentText(path_id)
+                self.nb_plot_points = float(res)
 
     def deletePath(self):
         path_id = self.path_choice.currentText()
@@ -901,29 +932,32 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
             self.vol_path_3d_data["paths"].pop(path_id)
 
-    def reportProgress(self,n):
-        self.x_global.setText(f"{n}")
-        
-    def reportField(self, n):
-        p, f = n.split(";")
-        self.updatePositionWidget(p)
-        self.updateGaussmeterWidget(f)
+
+    def reportField(self):
+        self.plot_point_index += 1
+        #p, f = n.split(";")
+        # updating the widget set he value of position and field in the interface
+        self.scan3d_plot.scan3d_progress.setValue(100.*self.plot_point_index/self.nb_plot_points)
+        self.updatePositionWidget()
+        self.updateGaussmeterWidget()
 
         # update plot
+        p = "%s,%s,%s" % (self.x_global.text(),self.y_global.text(),self.z_global.text())
+        f = "%s,%s,%s,%s" % (self.field_x.text(),self.field_y.text(),self.field_z.text(),self.field_norm.text())
+
         self.scan3d_plot.update_plot_data(p, f)
         # write datafile
+
         self.data_file.write("0\t0\t")
-        gp = [float(i)  for i in p.split(',')]
-        self.data_file.write("\t".join(p.split(",")))
-        self.data_file.write("\t%f" % (gp[0]+float(self.x_origin.text())))
-        self.data_file.write("\t%f" % (gp[1]+float(self.y_origin.text())))
-        self.data_file.write("\t%f" % (gp[2]+float(self.z_origin.text())))
+        self.data_file.write("\t%s" % p.replace(",", "\t"))
+        self.data_file.write("\t%s" % self.x_local.text())
+        self.data_file.write("\t%s" % self.y_local.text())
+        self.data_file.write("\t%s" % self.z_local.text())
+        self.data_file.write("\t%s" % f.replace(",", "\t"))
         self.data_file.write("\t%s" % datetime.now().strftime("%Y%m%d"))
         self.data_file.write("\t%d" % int(time.time() - self.start_acq_time))
         self.data_file.write("\taaa\n")
 
-    def scan3d_showProgress(self, i):
-        self.scan3d_plot.scan3d_progress.setValue(i)
 
     def scan3d_finished_scan(self):
         self.scan3d_plot.scan3d_stop.setText("Close")
@@ -960,12 +994,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.thread.finished.connect(self.thread.deleteLater)
 
         self.worker.finished.connect(self.scan3d_finished_scan)
-        self.worker.progress.connect(self.scan3d_showProgress)
         self.worker.field.connect(self.reportField)
 
         # open data file
         self.open_data_filename()
         self.start_acq_time = time.time()
+        self.plot_point_index = 0
+
         # Step 6: Start the thread
         self.thread.start()
 
