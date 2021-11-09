@@ -58,7 +58,7 @@ def generate_path2(sizes, order):
     }
     # order the sizes
     l = [sizes[map_string_to_index[d]] for d in order]
-    coords = [[],[],[]]
+    coords = [[], [], []]
     f_asc = False
     m_asc = False
     for s in range(l[2]):
@@ -84,11 +84,11 @@ if __name__ == "__main__":
     #                   [2., 2.],
     #                   [4., 0.],
     #                   [2.,-2.]])
-    points = np.array([[0., 0.],
-                       [2., -2.],
-                       [4., 0.],
-                       [2.,2.]])
-    extrusion = [1, 3]
+    points = np.array([[25., 5.],
+                       [27., 7.],
+                       [29., 5.],
+                       [27.,3.]])
+    extrusion = [11, 13]
     steps = np.array([0.5, 0.5, 1])
 
     # precompute the data for generating the lattice
@@ -109,7 +109,8 @@ if __name__ == "__main__":
     nz = int((extrusion[1] - extrusion[0]) / steps[2]) + 1
     print("nb points",nx,ny,nz)
 
-    raw_lattice = generate_path2([nx,ny,nz],'xyz')
+    raw_lattice = generate_path2([nx, ny, nz],'zxy')
+
     lattice = origin + raw_lattice*steps
 
     p = Path(points)

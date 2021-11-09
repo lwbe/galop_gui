@@ -271,7 +271,6 @@ class Worker(QObject):
         self.move_params = move_params
         self._issuspended = False
 
-
     def stop(self):
         self._isrunning = False
 
@@ -449,6 +448,8 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.update_plot_params()
 
     def update_plot_params(self):
+        print("update_plot_arams sender :", self.sender())
+
         plane = self.scan3d_plane.currentText()
         index_layer = self.scan3d_layer.currentIndex()
         self.scan3d_layer_slider.setValue(index_layer)
@@ -466,7 +467,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         print(self.X_plot.shape,self.Y_plot.shape,self.Z_plot.shape)
         self.update_plot()
 
-    def update_plot_data(self,position,field):
+    def update_plot_data(self, position, field):
         x, y, z = [float(i) for i in position.split(",")]
         # give the index in the coordinates
         i = np.where(np.isclose(self.X,  x))[0][0]
@@ -486,6 +487,9 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
                 self.scan3d_layer_slider.setEnabled(False)
                 self.scan3d_fieldcomponent.setEnabled(False)
                 self.scan3d_layer.setEnabled(False)
+                self._ax.set_xlabel("X")
+                self._ax.set_ylabel("Y")
+                self._ax.set_zlabel("Z")
                 self.quiver_mode = True
         else:
             if self.quiver_mode:
@@ -496,8 +500,12 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
                 self.quiver_mode = False
 
     def update_plot_base(self):
+        print("update_plot_base sender :", self.sender())
+
         if self.plot_object:
             try:
+                print("Plot Object ",self.plot_object)
+                print("collections: ",self._ax.collections)
                 self._ax.collections.remove(self.plot_object)
             except:
                 pass
