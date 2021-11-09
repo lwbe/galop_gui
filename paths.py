@@ -77,36 +77,57 @@ def generate_path2(sizes, order):
     return np.array(new_coords).T
 
 
-points = np.array([[0,0],[2,2],[4.,0.],[2,-2]])
-extrusion = [1,3]
-steps = np.array([0.5, 0.5, 1])
 
-x_min = np.min(points[:, 0])
-x_max = np.max(points[:, 0])
-y_min = np.min(points[:, 1])
-y_max = np.max(points[:, 1])
+if __name__ == "__main__":
+    # define a 2d polygone
+    #points = np.array([[0., 0.],
+    #                   [2., 2.],
+    #                   [4., 0.],
+    #                   [2.,-2.]])
+    points = np.array([[0., 0.],
+                       [2., -2.],
+                       [4., 0.],
+                       [2.,2.]])
+    extrusion = [1, 3]
+    steps = np.array([0.5, 0.5, 1])
 
-print(x_min,x_max,y_min,y_max)
+    # precompute the data for generating the lattice
+    x_min = np.min(points[:, 0])
+    x_max = np.max(points[:, 0])
+    y_min = np.min(points[:, 1])
+    y_max = np.max(points[:, 1])
 
-origin = np.ndarray(3)
-origin[0:2]= points[0]
-origin[2] = extrusion[0]
+    print(x_min,x_max,y_min,y_max)
 
-print(origin)
-lattice = origin + generate_path2([
-    int((x_max-x_min)/steps[0])+1,
-    int((y_max-y_min)/steps[1])+1,
-    int((extrusion[1]-extrusion[0])/steps[2])+1],
-          'xyz')*steps
+    origin = np.ndarray(3)
+    origin[0:2] = points[0]
+    origin[2] = extrusion[0]
 
-print(lattice)
+    print(origin)
+    nx = int((x_max - x_min) / steps[0]) + 1
+    ny = int((y_max - y_min) / steps[1]) + 1
+    nz = int((extrusion[1] - extrusion[0]) / steps[2]) + 1
+    print("nb points",nx,ny,nz)
+
+    raw_lattice = generate_path2([nx,ny,nz],'xyz')
+    lattice = origin + raw_lattice*steps
+
+    p = Path(points)
+    for i,j in zip(lattice,raw_lattice):
+        print("%20s %20s %6s %6s" % (str(i),str(j),
+                                     str(p.contains_point(i[0:2], radius=0.05)),
+                                     str(p.contains_point(i[0:2], radius=-0.05))))
 
 
-p = Path(points)
-for i in lattice:
-    if p.contains_point(i[0:2]):
-        print(i)
-print(lattice[1], lattice[1][[0,1]], lattice[1][[0,2]], lattice[1][[1,2]])
+    #print("Points")
+    #
+    #print(points)
+    #for i in lattice:
+    #    if p.contains_point(i[0:2]):
+    #        print(i, "inside")
+    #    else:
+    #        print(i)
+
 
 #origin = np.array([2.1,3.4,1.0])
 
