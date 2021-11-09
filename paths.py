@@ -1,13 +1,13 @@
 import numpy as np
-
+from matplotlib.path import Path
 
 def generate_points(x0,x1,dx,y0,y1,dy,z0,z1,dz):
-    X = np.arange(x0,x1,dx)
-    Y = np.arange(y0,y1,dy)
-    Z = np.arange(z0,z1,dz)
-    x, y, z = np.meshgrid(X,Y,Z)
+    X = np.arange(x0, x1, dx)
+    Y = np.arange(y0, y1, dy)
+    Z = np.arange(z0, z1, dz)
+    x, y, z = np.meshgrid(X, Y, Z)
     l = x.size
-    return np.array([(i,j,k) for i,j,k in zip(x.reshape(l,),y.reshape(l,),z.reshape(l,))])
+    return np.array([(i, j, k) for i, j, k in zip(x.reshape(l,), y.reshape(l,), z.reshape(l,))])
 
 def generate_points2(x0,x1,dx,y0,y1,dy,z0,z1,dz):
     nx = int((10*x1-10*x0)/(10.*dx))+1
@@ -77,13 +77,47 @@ def generate_path2(sizes, order):
     return np.array(new_coords).T
 
 
+points = np.array([[0,0],[2,2],[4.,0.],[2,-2]])
+extrusion = [1,3]
+steps = np.array([0.5, 0.5, 1])
+
+x_min = np.min(points[:, 0])
+x_max = np.max(points[:, 0])
+y_min = np.min(points[:, 1])
+y_max = np.max(points[:, 1])
+
+print(x_min,x_max,y_min,y_max)
+
+origin = np.ndarray(3)
+origin[0:2]= points[0]
+origin[2] = extrusion[0]
+
+print(origin)
+lattice = origin + generate_path2([
+    int((x_max-x_min)/steps[0])+1,
+    int((y_max-y_min)/steps[1])+1,
+    int((extrusion[1]-extrusion[0])/steps[2])+1],
+          'xyz')*steps
+
+print(lattice)
 
 
-print(generate_path([2,3,4],'xyz'))
-print(generate_path2([2,3,4],'xyz'))
-print(generate_path2([2,3,4],'zxy'))
-a=generate_path2([2,3,4],'xyz')
-b = a*np.array([0.1,0.5,1])#+np.array([3,4,5])
-print(b[1])
-for i in b:
-    print(i)
+p = Path(points)
+for i in lattice:
+    if p.contains_point(i[0:2]):
+        print(i)
+print(lattice[1], lattice[1][[0,1]], lattice[1][[0,2]], lattice[1][[1,2]])
+
+#origin = np.array([2.1,3.4,1.0])
+
+#
+#print(np.min(lattice[:,0]))
+#print(np.max(lattice[:,0]))
+
+#print(generate_path2([2,3,4],'xyz'))
+#print(generate_path2([2,3,4],'zxy'))
+#a=generate_path2([2,3,4],'xyz')
+#b = a*np.array([0.1,0.5,1])#+np.array([3,4,5])
+#print(b[1])
+#for i in b:
+#    print(i)
