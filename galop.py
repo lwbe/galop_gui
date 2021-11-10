@@ -51,15 +51,15 @@ _Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf = 10, -2, 2, 10, -2, 2, 10, -2, 2
 # datas should be taken from a file
 initial_values = {
     "x_origin" : "0.0",
-    "x_step": "1.0",
+    "x_step": "5.0",
     "x_acc": "2",
     "x_speed": "2",
     "y_origin" : "0.0",
-    "y_step": "1.0",
+    "y_step": "5.0",
     "y_acc": "2",
     "y_speed": "2",
     "z_origin" : "0.0",
-    "z_step": "1.0",
+    "z_step": "5.0",
     "z_acc": "2",
     "z_speed": "2",
     "min_extrusion": "0",
@@ -381,7 +381,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
 #        self.scan3d_plottype.addItems(["surface","surface and contour","wireframe"])
         self.scan3d_plottype.addItems(["surface", "wireframe", "contour", "quiver"])
 
-        self.scan3d_plottype.currentTextChanged.connect(self.update_plot_base)
+        self.scan3d_plottype.currentTextChanged.connect(self.update_plot_type)
         self.scan3d_plane.currentTextChanged.connect(self.update_layers)
         self.scan3d_layer.currentTextChanged.connect(self.update_plot_params)
         self.scan3d_layer_slider.valueChanged.connect(self.update_plot_params_slider)
@@ -448,7 +448,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.update_plot_params()
 
     def update_plot_params(self):
-        print("update_plot_arams sender :", self.sender())
 
         plane = self.scan3d_plane.currentText()
         index_layer = self.scan3d_layer.currentIndex()
@@ -464,7 +463,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         elif plane == "xz":
             self.X_plot, self.Y_plot = np.meshgrid(self.Z, self.X)
             self.Z_plot = self.Field[:, index_layer, :,  field_component_index]
-        print(self.X_plot.shape,self.Y_plot.shape,self.Z_plot.shape)
+        print("sender for update_plot_params",self.sender())
         self.update_plot()
 
     def update_plot_data(self, position, field):
@@ -480,54 +479,54 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         if self.scan3d_update.isChecked():
             self.update_plot_base()
 
-    def set_quiver_mode(self,flag):
-        if flag:
-            if not self.quiver_mode:
-                self.scan3d_plane.setEnabled(False)
-                self.scan3d_layer_slider.setEnabled(False)
-                self.scan3d_fieldcomponent.setEnabled(False)
-                self.scan3d_layer.setEnabled(False)
-                self._ax.set_xlabel("X")
-                self._ax.set_ylabel("Y")
-                self._ax.set_zlabel("Z")
-                self.quiver_mode = True
+    def update_plot_type(self):
+        if self.scan3d_plottype.currentText() == "quiver":
+            self.scan3d_plane.setEnabled(False)
+            self.scan3d_layer_slider.setEnabled(False)
+            self.scan3d_fieldcomponent.setEnabled(False)
+            self.scan3d_layer.setEnabled(False)
+            self._ax.set_xlabel("X")
+            self._ax.set_ylabel("Y")
+            self._ax.set_zlabel("Z")
+            self.update_plot()
         else:
-            if self.quiver_mode:
-                self.scan3d_plane.setEnabled(True)
-                self.scan3d_layer_slider.setEnabled(True)
-                self.scan3d_fieldcomponent.setEnabled(True)
-                self.scan3d_layer.setEnabled(True)
-                self.quiver_mode = False
+            self.scan3d_plane.setEnabled(True)
+            self.scan3d_layer_slider.setEnabled(True)
+            self.scan3d_fieldcomponent.setEnabled(True)
+            self.scan3d_layer.setEnabled(True)
+            self.update_layers()
+            self.update_field()
 
     def update_plot_base(self):
-        print("update_plot_base sender :", self.sender())
-
         if self.plot_object:
+            print(self.plot_object)
+
             try:
-                print("Plot Object ",self.plot_object)
-                print("collections: ",self._ax.collections)
                 self._ax.collections.remove(self.plot_object)
             except:
-                pass
+                print("----------")
+            #    print("Could not remove plot_object")
+            #    print(self.plot_object)
+                #for i in self._ax.collections:
+                #    print("\t",i)
+            #    print("----------")
+                for i in self.plot_object.collections:
+                    i.remove()
 
         if self.scan3d_plottype.currentText() == "surface":
-            self.set_quiver_mode(False)
             self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap=cm.coolwarm, edgecolor="none")
-        #elif self.scan3d_plottype.currentText() == "surface and contour":
-        #    self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
-        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='z', offset=self.Z_plot.min(), cmap=cm.coolwarm)
-        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='x', offset=self.X_plot.min(), cmap=cm.coolwarm)
-        #    cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='y', offset=self.Y_plot.min(), cmap=cm.coolwarm)
+        elif self.scan3d_plottype.currentText() == "surface and contour":
+            self.plot_object = self._ax.plot_surface(self.X_plot, self.Y_plot, self.Z_plot, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
+            cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='z', offset=self.Z_plot.min(), cmap=cm.coolwarm)
+            cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='x', offset=self.X_plot.min(), cmap=cm.coolwarm)
+            cset = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot, zdir='y', offset=self.Y_plot.min(), cmap=cm.coolwarm)
         elif self.scan3d_plottype.currentText() == "wireframe":
-            self.set_quiver_mode(False)
             self.plot_object = self._ax.plot_wireframe(self.X_plot, self.Y_plot, self.Z_plot,
                                                        rstride=1, cstride=1, cmap=cm.coolwarm)
         elif self.scan3d_plottype.currentText() == "contour":
-            self.set_quiver_mode(False)
             self.plot_object = self._ax.contour(self.X_plot, self.Y_plot, self.Z_plot,
                                                 cmap=cm.coolwarm)
         elif self.scan3d_plottype.currentText() == "quiver":
-            self.set_quiver_mode(True)
             x, y, z = np.meshgrid(self.X, self.Y, self.Z)
             self.plot_object = self._ax.quiver(x, y, z,
                                                self.Field[:, :, :, 0],
