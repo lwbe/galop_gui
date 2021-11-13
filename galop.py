@@ -118,7 +118,7 @@ pyrame_modules_configuration = {
     }
 }
 
-SIMULATE = True
+SIMULATE = False
 class Pyrame(object):
     def __init__(self,parent):
         self.module_port = {}
@@ -926,7 +926,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.path_nid += 1
                 self.path_choice.addItem(path_id)
                 self.path_choice.setCurrentText(path_id)
-                self.nb_plot_points = float(res)
+                self.nb_plot_points = float(res.split(":")[0])
 
     def deletePath(self):
         path_id = self.path_choice.currentText()
