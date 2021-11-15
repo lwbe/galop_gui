@@ -3,6 +3,8 @@
 # Generic imports
 import sys, time, json
 from datetime import datetime
+
+import click
 import numpy as np
 
 #PyQt Imports
@@ -118,7 +120,7 @@ pyrame_modules_configuration = {
     }
 }
 
-SIMULATE = False
+SIMULATE = None
 class Pyrame(object):
     def __init__(self,parent):
         self.module_port = {}
@@ -237,6 +239,7 @@ class Pyrame(object):
         :return: the return of the pyrame module
         """
 
+        print('SIMULATE',SIMULATE)
         if SIMULATE:
             return self.call_simulate(pyrame_func, *args)
 
@@ -275,7 +278,7 @@ class Worker(QObject):
         self._isrunning = False
 
     def suspend(self):
-        self._issuspended = not self._issuspended
+        self._issuspended = not self._is0suspended
 
     def run(self):
         retcode, res = self.pyrame.call("move_first@paths", *self.move_params)
@@ -627,10 +630,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def loadScanParam(self):
         name, _ = QFileDialog.getOpenFileName(self, "Load scan file")
-        print(json.loads(open(name).read()))
-        # need to create vol and path from there. This mean updating the interface and click or execute directly the functions.
-        # the problem is how do we know the coordinates of the point since they can change from one volume to another.
-        # or shall we go from position to path in one click hiding the volume part?
+        self.vol_path_3d_data = json.loads(open(name).read())
+        for vol_id in self.vol_path_3d_data["volumes"]:
+            dv = self.vol_path_3d_data["volumes"][vol_id]
+            retcode, res = self.pyrame.call("init_volume@paths", *dv['pyrame_string'])
+            self.volume_choice.addItem(vol_id)
+        for path_id in self.vol_path_3d_data["paths"]:
+            pv = self.vol_path_3d_data["paths"][path_id]
+            retcode, res = self.pyrame.call("init_path@paths", *pv['pyrame_string'])
+            self.path_choice.addItem(path_id)
 
     def saveScanParam(self):
         name, _ = QFileDialog.getSaveFileName(self, 'Save scan file', filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
@@ -918,7 +926,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                     path_id: {
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
-                        "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)]
+                        "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)],
+                        "nb_points":float(res.split(":")[0])
                     }
                 }
                 self.start_scan.setEnabled(True)
@@ -926,7 +935,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.path_nid += 1
                 self.path_choice.addItem(path_id)
                 self.path_choice.setCurrentText(path_id)
-                self.nb_plot_points = float(res.split(":")[0])
+                #self.nb_plot_points = float(res.split(":")[0])
 
     def deletePath(self):
         path_id = self.path_choice.currentText()
@@ -1016,6 +1025,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
         steps = self.vol_path_3d_data["paths"][path_id]["steps"]
         coords = self.vol_path_3d_data["volumes"][vol_id]["coords"]
+        self.nb_plot_points = self.vol_path_3d_data["paths"][path_id]["nb_points"]
         Nx = int((10.*coords[1] - 10*coords[0]) / (10.*steps[0])) + 1
         Ny = int((10.*coords[3] - 10*coords[2]) / (10.*steps[1])) + 1
         Nz = int((10.*coords[5] - 10*coords[4]) / (10.*steps[2])) + 1
@@ -1045,11 +1055,17 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.data_file.write("# gaussmeter probe ERROR %s \n" % res)
             self.data_file.write("# mag ang       probe ang       x glob  y glob  z glob  x local y local z local X Bfield                Y Bfield        Z Bfield        V Bfield        time                    range\n")
 
-
-if __name__ == "__main__":
+import click
+@click.command()
+@click.option("--simulate",is_flag=True,help="simulate the device")
+def main(simulate):
+    global SIMULATE
+    print(simulate)
+    SIMULATE = simulate
     app = QApplication(sys.argv)
-
     window = MainWindow()
     window.show()
-
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
