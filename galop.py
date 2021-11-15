@@ -239,11 +239,11 @@ class Pyrame(object):
         :return: the return of the pyrame module
         """
 
-        print('SIMULATE',SIMULATE)
+
         if SIMULATE:
             return self.call_simulate(pyrame_func, *args)
 
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        #QApplication.setOverrideCursor(Qt.WaitCursor)
         function, module = pyrame_func.split("@")
         retcode, res = bindpyrame.sendcmd("localhost",
                                           self.module_port[module],
@@ -259,7 +259,7 @@ class Pyrame(object):
                 "%s" % res,
                 buttons=QMessageBox.Ok)
 
-        QApplication.restoreOverrideCursor()
+        #QApplication.restoreOverrideCursor()
         return retcode, res
 
 # thread for scan
@@ -267,12 +267,13 @@ class Worker(QObject):
     finished = pyqtSignal()
     field = pyqtSignal()
 
-    def __init__(self, move_params, pyrame):
+    def __init__(self, move_params, pyrame,master_widget):
         super().__init__()
         self._isrunning = True
         self.pyrame = pyrame
         self.move_params = move_params
         self._issuspended = False
+        self.master_widget = master_widget
 
     def stop(self):
         self._isrunning = False
@@ -282,6 +283,8 @@ class Worker(QObject):
 
     def run(self):
         retcode, res = self.pyrame.call("move_first@paths", *self.move_params)
+        self.master_widget.updatePositionWidget()
+        self.master_widget.updateGaussmeterWidget()
         self.field.emit() #"%s;%s" % (position, field))
 
         run = True
@@ -289,6 +292,9 @@ class Worker(QObject):
             if not self._issuspended:
 
                 retcode, res = self.pyrame.call("move_next@paths", *self.move_params)
+                self.master_widget.updatePositionWidget()
+                self.master_widget.updateGaussmeterWidget()
+
                 self.field.emit()
                 if res == "finished" or not self._isrunning :
                     run = False
@@ -955,8 +961,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         #p, f = n.split(";")
         # updating the widget set he value of position and field in the interface
         self.scan3d_plot.scan3d_progress.setValue(100.*self.plot_point_index/self.nb_plot_points)
-        self.updatePositionWidget()
-        self.updateGaussmeterWidget()
+        
+        #self.updatePositionWidget()
+        #self.updateGaussmeterWidget()
 
         # update plot
         p = "%s,%s,%s" % (self.x_global.text(),self.y_global.text(),self.z_global.text())
@@ -999,7 +1006,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         self.thread = QThread()
 
-        self.worker = Worker(move_params, self.pyrame) #MUWorker(move_params, self.pyrame)
+        self.worker = Worker(move_params, self.pyrame,self) #MUWorker(move_params, self.pyrame)
 
         # Step 4: Move worker to the thread
         self.worker.moveToThread(self.thread)
@@ -1043,7 +1050,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         data_filename = "%s%s%s" % (DATADIR,data_prefix,datetime.now().strftime("%Y_%m_%d_%H.%M"))
 
         name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file', directory=data_filename)
+        print("filename :",name)
+
         if name:
+            print("opening file")
             self.data_file = open(name,"w")
             # the header
             self.data_file.write("# units are Tesla, degrees, mm and s\n")
