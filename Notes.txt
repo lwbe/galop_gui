@@ -79,3 +79,20 @@ utilisation
 On active l'environement par
 
 conda activate galop_gui
+
+Modification pour le fichier scan3dwidget_ui.py
+
+rajouter
+
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+
+puis apres Form.resize
+
+         Form.setWindowModality(QtCore.Qt.ApplicationModal)
+
+Enfin remplacer
+
+     self.canvas = QtWidgets.QWidget(Form)
+
+par
+     self.canvas = FigureCanvas(self.fig) #QtWidgets.QWidget(Form)
