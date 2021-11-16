@@ -121,14 +121,16 @@ pyrame_modules_configuration = {
 }
 
 SIMULATE = None
+
+
 class Pyrame(object):
     def __init__(self,parent):
         self.module_port = {}
         self.parent = parent
         self.simulated_position = [ 0, 0,0]
         self.simulated_field = [ 0, 0,0, 0]
-        self.x_limits,self.y_limits, self.z_limits = None,None,None
-        self.x_step,self.y_step, self.z_step = None,None,None
+        self.x_limits, self.y_limits, self.z_limits = None, None, None
+        self.x_step, self.y_step, self.z_step = None, None, None
         self.points = None
 
      # Pyrame Stuff
@@ -173,6 +175,15 @@ class Pyrame(object):
         elif pyrame_func.startswith("measure@"):
             retval = ",".join([str(i) for i in self.simulated_field])
             print("measure ", retval)
+        elif pyrame_func.startswith("move@motion"):
+            print("args",args)
+            if args[0] == "axis_x":
+                self.simulated_position = [self.simulated_position[0] + float(args[1]), self.simulated_position[1], self.simulated_position[2]]
+            elif args[0] == "axis_y":
+                self.simulated_position = [self.simulated_position[0], self.simulated_position[1] + float(args[1]), self.simulated_position[2]]
+            else:
+                self.simulated_position = [self.simulated_position[0], self.simulated_position[1], self.simulated_position[2] + float(args[1])]
+
         elif pyrame_func.startswith("move_space@"):
             self.simulated_position = [float(args[1]), float(args[2]), float(args[3])]
         elif pyrame_func.startswith("init_volume"):
@@ -223,12 +234,8 @@ class Pyrame(object):
                 time.sleep(1)
         else:
             print("pyrame call :", pyrame_func, args)
-
         QApplication.restoreOverrideCursor()
-
         return 1, retval
-
-
 
     def call(self, pyrame_func, *args):
         """
@@ -261,6 +268,7 @@ class Pyrame(object):
 
         #QApplication.restoreOverrideCursor()
         return retcode, res
+
 
 # thread for scan
 class Worker(QObject):
@@ -562,6 +570,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.field_range_y.addItems(self.GAUSSMETER_RANGE)
         self.field_range_z.addItems(self.GAUSSMETER_RANGE)
         self.path.addItems(self.PATH_ORDER)
+        self.pathtype_choice.addItems(["mm", "rr"])
+        self.direction_choice.addItems(["ppp", "nnn"])
         
         self.volume_nid = 0
         self.path_nid = 0
@@ -590,6 +600,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         # Menu bindings
         self.actionLoad_scan_param.triggered.connect(self.loadScanParam)
         self.actionSave_scan_param.triggered.connect(self.saveScanParam)
+        self.actionGet_Position.triggered.connect(self.getPositionDebug)
+        self.actionGet_Field.triggered.connect(self.getFieldDebug)
         self.actionQuit.triggered.connect(self.exitApplication)
 
         # connect button to function
@@ -615,11 +627,19 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.create_path.setEnabled(False)
         self.delete_path.clicked.connect(self.deletePath)
         self.delete_path.setEnabled(False)
+        self.save_scan.clicked.connect(self.saveScanParam)
+        self.save_scan.setEnabled(False)
         self.start_scan.clicked.connect(self.scan)
-        #self.start_scan.setEnabled(False)
+        self.start_scan.setEnabled(False)
 
-        # datas
-        self.vol_path_3d_data = {"volumes":{},"paths":{}}
+        self.volume_choice.currentIndexChanged.connect(self.setVolumeParameters)
+        self.path_choice.currentIndexChanged.connect(self.setPathParameters)
+
+        # datas for volume and paths
+        self.vol_path_3d_data = {
+            "volumes": {},
+            "paths": {}
+            }
 
     def check_state(self, *args, **kwargs):
         sender = self.sender()
@@ -633,8 +653,28 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             color = '#f6989d' # red
         sender.setStyleSheet('QLineEdit { background-color: %s }' % color)
 
+    def getPositionDebug(self):
+        retcode, res = self.pyrame.call("get_position@paths", "space_1")
+        if retcode == 1:
+            self.statusbar.showMessage(res)
+        else:
+            self.statusbar.showMessage("Error: cannot get position")
+
+    def getFieldDebug(self):
+        r = ''
+        for a in self.AXIS_3D:
+            cr = getattr(self,"field_range_%s"% a).currentText()[0]  # only the first character means a,0,1,2,3,c
+            if cr == 'c':
+                cr ='a'
+            r += cr
+        retcode, res = self.pyrame.call("measure@ls_460", "gaussmeter",r)
+        if retcode == 1:
+            self.statusbar.showMessage(res)
+        else:
+            self.statusbar.showMessage("Error: cannot get field")
+
     def loadScanParam(self):
-        name, _ = QFileDialog.getOpenFileName(self, "Load scan file")
+        name, _ = QFileDialog.getOpenFileName(self, "Load scan file", filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
         self.vol_path_3d_data = json.loads(open(name).read())
         for vol_id in self.vol_path_3d_data["volumes"]:
             dv = self.vol_path_3d_data["volumes"][vol_id]
@@ -649,7 +689,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         name, _ = QFileDialog.getSaveFileName(self, 'Save scan file', filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
         if name:
             with open(name, 'w') as file:
-                file.write(json.dumps(self.vol_path_3d_data))
+                file.write(json.dumps(self.vol_path_3d_data,indent=4))
 
     def exitApplication(self):
         """
@@ -763,9 +803,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         dlg.explanation.setText("Order axis for Goto Origin")
         dlg.orderCombo.addItems(self.PATH_ORDER)
         if dlg.exec_():
-            print("Done", dlg.scan_order)
-            #for a in dlg.scan_order:
-            #    getattr(self, "%s_global" % a).setText(getattr(self, "%s_origin" % a).text())
+            for d in dlg.orderCombo.currentText():
+                ep = float(getattr(self, "%s_origin" % d).text())
+                cp = float(getattr(self, "%s_global" % d).text())
+                s = getattr(self, "%s_speed" % d).text()
+                a = getattr(self, "%s_acc" % d).text()
+                #print("moving axis %s to position %s with speed %s and acc %s" % (d, str(ep -cp) ,v,a))
+                retcode, res = self.pyrame.call("move@motion", "axis_%s" % d,str(ep-cp),s,a)
+                if retcode == 1:
+                   self.updatePositionWidget()
 
     def homing(self):
         dlg = orderedMovement_Dialog()
@@ -819,16 +865,16 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         c0_values = []
         c1_values = []
         new_coords = ""
-        #all_coords = []
+        all_coords = []
         for i in range(self.points_3d.count()):
             coords = self.points_3d.item(i).text().split(',')
-            #all_coords.append(coords)
+            all_coords.append(coords)
             new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0], float(coords[c1]) + origin[c1])
             c0_values.append(float(coords[c0]) + origin[c0])
             c1_values.append(float(coords[c1]) + origin[c1])
 
         coords = self.points_3d.item(0).text().split(',')
-        #all_coords.append(coords)
+        all_coords.append(coords)
         new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
 
         # we need to ask for a name for the vol_id
@@ -877,14 +923,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                     z_plot_min = np.min(c1_values)
                     z_plot_max = np.max(c1_values)
 
-                self.vol_path_3d_data["volumes"]={
-                    vol_id: {"pyrame_string": [vol_id, "space_1",
-                                               math_module,math_function, new_coords, ext_axis,
-                                           "%s" % (axis_min+origin[c2]),
-                                           "%s" % (axis_max+origin[c2])],
-                             "coords": [x_plot_min,x_plot_max,y_plot_min,y_plot_max,z_plot_min,z_plot_max]
-                             }
-                }
+
+                self.vol_path_3d_data["volumes"][vol_id] = {
+                    "pyrame_string": [vol_id, "space_1",math_module,math_function, new_coords, ext_axis,"%s" % (axis_min+origin[c2]),"%s" % (axis_max+origin[c2])],
+                    "coords": [x_plot_min,x_plot_max,y_plot_min,y_plot_max,z_plot_min,z_plot_max],
+                    "points_3d": all_coords,
+                    "origin": origin
+                    }
+
+                self.save_scan.setEnabled(True)
                 self.create_path.setEnabled(True)
                 self.delete_volume.setEnabled(True)
                 self.volume_nid += 1
@@ -893,7 +940,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def deleteVolume(self):
         vol_id = self.volume_choice.currentText()
-        retcode, res = self.pyrame.call("deinit_volume@paths",vol_id)
+        retcode, res = self.pyrame.call("deinit_volume@paths", vol_id)
         if retcode == 1:
             self.volume_choice.removeItem(self.volume_choice.currentIndex())
 
@@ -903,6 +950,14 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.create_path.setEnabled(False)
             # remove from dict
             self.vol_path_3d_data["volumes"].pop(vol_id)
+        # we need to find the path associated with the volume and remove them
+        path_id_to_remove = [p[0] for p in self.vol_path_3d_data["paths"].items() if p[1]['vol_id'] == vol_id]
+        print("paths ",self.vol_path_3d_data["paths"])
+        for p in path_id_to_remove:
+            print("removing ",p)
+
+    def setVolumeParameters(self):
+        pass
 
     def createPath(self):
         map_xyzton={
@@ -923,18 +978,17 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         dlg.lineEditField.setText("path_%d" % self.path_nid)
         if dlg.exec_():
             path_id = dlg.lineEditField.text()
-            path_type = "rr"
-            path_directions = "ppp"
-            retcode, res = self.pyrame.call("init_path@paths",path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions)
+            path_type = self.pathtype_choice.currentText()
+            path_directions = self.direction_choice.currentText()
+            retcode, res = self.pyrame.call("init_path@paths",path_id, "space_1", vol_id, scan_x_step, scan_y_step, scan_z_step, path_order, path_type, path_directions)
             if retcode == 1:
-                self.vol_path_3d_data["paths"] = {
-                    path_id: {
+                self.vol_path_3d_data["paths"][path_id]= {
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
                         "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)],
                         "nb_points":float(res.split(":")[0])
                     }
-                }
+
                 self.start_scan.setEnabled(True)
                 self.delete_path.setEnabled(True)
                 self.path_nid += 1
@@ -945,7 +999,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def deletePath(self):
         path_id = self.path_choice.currentText()
         retcode, res = self.pyrame.call("deinit_path@paths",path_id)
-        if retcode==1:
+        if retcode == 1:
             self.path_choice.removeItem(self.path_choice.currentIndex())
 
             if self.path_choice.count() == 0:
@@ -954,6 +1008,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
             self.vol_path_3d_data["paths"].pop(path_id)
 
+    def setPathParameters(self):
+        pass
 
     def reportField(self):
         self.plot_point_index += 1
@@ -1052,8 +1108,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         print("filename :",name)
 
         if name:
-            print("opening file")
-            self.data_file = open(name,"w")
+            self.data_file = open(name, "w", 1)
             # the header
             self.data_file.write("# units are Tesla, degrees, mm and s\n")
             self.data_file.write("# Local coordinate system origin: x0=%s, y0=%s, z0=%s\n" % (self.x_origin.text(),self.y_origin.text(),self.z_origin.text()))
@@ -1062,11 +1117,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.data_file.write("# gaussmeter probe %s \n" % res)
             else:
                 self.data_file.write("# gaussmeter probe ERROR %s \n" % res)
-            self.data_file.write("# mag ang       probe ang       x glob  y glob  z glob  x local y local z local X Bfield                Y Bfield        Z Bfield        V Bfield        time                    range\n")
+            self.data_file.write("# mag ang probe ang\tx glob\ty glob\tz glob\tx local\ty local\tz local\tX Bfield\tY Bfield\tZ Bfield\tV Bfield\tdate\telapsed time\trange\n")
 
 import click
 @click.command()
-@click.option("--simulate",is_flag=True,help="simulate the device")
+@click.option("--simulate", is_flag=True, help="simulate the device")
 def main(simulate):
     global SIMULATE
     print(simulate)
