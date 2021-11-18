@@ -250,7 +250,7 @@ class Pyrame(object):
         if SIMULATE:
             return self.call_simulate(pyrame_func, *args)
 
-        #QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
         function, module = pyrame_func.split("@")
         retcode, res = bindpyrame.sendcmd("localhost",
                                           self.module_port[module],
@@ -266,7 +266,7 @@ class Pyrame(object):
                 "%s" % res,
                 buttons=QMessageBox.Ok)
 
-        #QApplication.restoreOverrideCursor()
+        QApplication.restoreOverrideCursor()
         return retcode, res
 
 
@@ -486,6 +486,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
     def update_plot_data(self, position, field):
         x, y, z = [float(i) for i in position.split(",")]
         # give the index in the coordinates
+        print(" update_plot_data:x",x," self.X ",self.X)
         i = np.where(np.isclose(self.X,  x))[0][0]
         j = np.where(np.isclose(self.Y,  y))[0][0]
         k = np.where(np.isclose(self.Z,  z))[0][0]
@@ -677,6 +678,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for vol_id in self.vol_path_3d_data["volumes"]:
             dv = self.vol_path_3d_data["volumes"][vol_id]
             retcode, res = self.pyrame.call("init_volume@paths", *dv['pyrame_string'])
+            
             self.volume_choice.addItem(vol_id)
         self.volume_choice.blockSignals(False)
 
@@ -684,6 +686,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for path_id in self.vol_path_3d_data["paths"]:
             pv = self.vol_path_3d_data["paths"][path_id]
             retcode, res = self.pyrame.call("init_path@paths", *pv['pyrame_string'])
+            print("loadScanParams:res ",res)
             self.path_choice.addItem(path_id)
         self.path_choice.blockSignals(False)
 
@@ -991,7 +994,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         vol_data = self.vol_path_3d_data["volumes"][self.volume_choice.currentText()]
         for d,v in zip(self.AXIS_3D, vol_data["origin"]):
             getattr(self, "%s_origin" % d).setText(v)
-        self.setOrigin()
+            g = getattr(self, "%s_global" % d).text()
+            getattr(self, "%s_local" % d).setText(str(float(v)-float(g)))
         self.points_3d.clear()
         self.points_3d.addItems(vol_data["points_3d"])
         print(vol_data)
