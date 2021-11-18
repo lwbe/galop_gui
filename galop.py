@@ -668,16 +668,26 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def loadScanParam(self):
         name, _ = QFileDialog.getOpenFileName(self, "Load scan file", filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
+        if not name:
+            return
+
         self.vol_path_3d_data = json.loads(open(name).read())
+
+        self.volume_choice.blockSignals(True)
         for vol_id in self.vol_path_3d_data["volumes"]:
             dv = self.vol_path_3d_data["volumes"][vol_id]
             retcode, res = self.pyrame.call("init_volume@paths", *dv['pyrame_string'])
             self.volume_choice.addItem(vol_id)
+        self.volume_choice.blockSignals(False)
+
+        self.path_choice.blockSignals(True)
         for path_id in self.vol_path_3d_data["paths"]:
             pv = self.vol_path_3d_data["paths"][path_id]
             retcode, res = self.pyrame.call("init_path@paths", *pv['pyrame_string'])
             self.path_choice.addItem(path_id)
-        
+        self.path_choice.blockSignals(False)
+
+
         # update GUI buttons
         self.create_volume.setEnabled(True)
         self.delete_volume.setEnabled(True)
@@ -686,15 +696,19 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.save_scan.setEnabled(True)
         self.start_scan.setEnabled(True)
         self.delete_position.setEnabled(True)
-        self.set_origin.clicked.setEnabled(False)
+        self.set_origin.setEnabled(False)
 
+        # update the GUI  using the path given o
+        # self.path_choice.addItem(path_id)
+        self.setPathParameters()
 
         
     def saveScanParam(self):
         name, _ = QFileDialog.getSaveFileName(self, 'Save scan file', filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
         if name:
+            print(self.vol_path_3d_data)
             with open(name, 'w') as file:
-                file.write(json.dumps(self.vol_path_3d_data,indent=4))
+                file.write(json.dumps(self.vol_path_3d_data, indent=4))
 
     def exitApplication(self):
         """
@@ -871,16 +885,15 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         c1_values = []
         new_coords = ""
         all_coords = []
-        for i in range(self.points_3d.count()):
-            coords = self.points_3d.item(i).text().split(',')
-            all_coords.append(self.points_3d.item(i))
+        nb_points_3d = self.points_3d.count()
+        # since by construction the las point should be equal to the first point we add one and take the index modulo the number of points
+        for i in range(nb_points_3d+1):
+            coords = self.points_3d.item(i % nb_points_3d).text().split(',')
+            all_coords.append(self.points_3d.item(i % nb_points_3d).text())
             new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0], float(coords[c1]) + origin[c1])
             c0_values.append(float(coords[c0]) + origin[c0])
             c1_values.append(float(coords[c1]) + origin[c1])
 
-        coords = self.points_3d.item(0).text().split(',')
-        all_coords.append(coords)
-        new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0],float(coords[c1]) + origin[c1])
 
         # we need to ask for a name for the vol_id
         dlg = askForName()
@@ -940,14 +953,25 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.create_path.setEnabled(True)
                 self.delete_volume.setEnabled(True)
                 self.volume_nid += 1
+
+                # avoid triggering the programmatic change of the Qcombobox volume_choice
+                self.volume_choice.blockSignals(True)
                 self.volume_choice.addItem(vol_id)
                 self.volume_choice.setCurrentText(vol_id)
+                self.volume_choice.blockSignals(False)
 
     def deleteVolume(self):
         vol_id = self.volume_choice.currentText()
+        self._deleteVolume(vol_id)
+
+    def _deleteVolume(self, vol_id):
         retcode, res = self.pyrame.call("deinit_volume@paths", vol_id)
+        print("deleteVolume: vol_id",vol_id)
         if retcode == 1:
-            self.volume_choice.removeItem(self.volume_choice.currentIndex())
+            self.volume_choice.blockSignals(True)
+            index = self.volume_choice.findText(vol_id)
+            self.volume_choice.removeItem(index)
+            self.volume_choice.blockSignals(False)
 
             # update interface if there is no volume to delete anymore
             if self.volume_choice.count() == 0:
@@ -955,18 +979,20 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.create_path.setEnabled(False)
             # remove from dict
             self.vol_path_3d_data["volumes"].pop(vol_id)
-        # we need to find the path associated with the volume and remove them
-        path_id_to_remove = [p[0] for p in self.vol_path_3d_data["paths"].items() if p[1]['vol_id'] == vol_id]
-        print("paths ",self.vol_path_3d_data["paths"])
-        for p in path_id_to_remove:
-            print("removing ",p)
+            # we need to find the path associated with the volume and remove them
+            path_id_to_remove = [p[0] for p in self.vol_path_3d_data["paths"].items() if p[1]['vol_id'] == vol_id]
+            print("_deleteVolume:path_id_to_remove", path_id_to_remove)
+            for p in path_id_to_remove:
+                print("_deleteVolume:p", p)
+                self._deletePath(p)
 
     def setVolumeParameters(self):
         print("setVolumeParameters called") 
         vol_data = self.vol_path_3d_data["volumes"][self.volume_choice.currentText()]
-        for d,v in zip(self.AXIS_3D,vol_data["origin"]):
+        for d,v in zip(self.AXIS_3D, vol_data["origin"]):
             getattr(self, "%s_origin" % d).setText(v)
         self.setOrigin()
+        self.points_3d.clear()
         self.points_3d.addItems(vol_data["points_3d"])
         print(vol_data)
 
@@ -1006,14 +1032,25 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.delete_path.setEnabled(True)
                 self.path_nid += 1
                 self.path_choice.addItem(path_id)
+                # avoid triggering the programmatic change of the Qcombobox volume_choice
+                self.path_choice.blockSignals(True)
                 self.path_choice.setCurrentText(path_id)
+                self.path_choice.blockSignals(False)
                 #self.nb_plot_points = float(res.split(":")[0])
 
     def deletePath(self):
+        print("deletePath:self.sender:",self.sender())
         path_id = self.path_choice.currentText()
-        retcode, res = self.pyrame.call("deinit_path@paths",path_id)
+        self._deletePath(path_id)
+
+    def _deletePath(self, path_id):
+        print("_deletePath:path_id",path_id)
+        retcode, res = self.pyrame.call("deinit_path@paths", path_id)
         if retcode == 1:
-            self.path_choice.removeItem(self.path_choice.currentIndex())
+            self.path_choice.blockSignals(True)
+            index = self.path_choice.findText(path_id)
+            self.path_choice.removeItem(index)
+            self.path_choice.blockSignals(False)
 
             if self.path_choice.count() == 0:
                 self.delete_path.setEnabled(False)
@@ -1022,6 +1059,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.vol_path_3d_data["paths"].pop(path_id)
 
     def setPathParameters(self):
+        print("setPathParameters called")
         path_id = self.path_choice.currentText()
         path_data = self.vol_path_3d_data["paths"][path_id]
         self.scan_x_step.setText(str(path_data["steps"][0]))
@@ -1031,7 +1069,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.direction_choice.setCurrentText(path_data["path_directions"])
  
         vol_id = path_data["vol_id"]
+        print("setPathParameters: vol_id", vol_id)
+
+        # TODEBUG self.volume_choice.setCurrentText(vol_id) should trigger self.setVolumeParameters()
         self.volume_choice.setCurrentText(vol_id)
+        self.setVolumeParameters()
         
     def reportField(self):
         self.plot_point_index += 1
