@@ -516,17 +516,10 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
 
     def update_plot_base(self):
         if self.plot_object:
-            print(self.plot_object)
-
             try:
                 self._ax.collections.remove(self.plot_object)
             except:
-                print("----------")
-            #    print("Could not remove plot_object")
-            #    print(self.plot_object)
-                #for i in self._ax.collections:
-                #    print("\t",i)
-            #    print("----------")
+                # for quiver
                 for i in self.plot_object.collections:
                     i.remove()
 
@@ -684,7 +677,19 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             pv = self.vol_path_3d_data["paths"][path_id]
             retcode, res = self.pyrame.call("init_path@paths", *pv['pyrame_string'])
             self.path_choice.addItem(path_id)
+        
+        # update GUI buttons
+        self.create_volume.setEnabled(True)
+        self.delete_volume.setEnabled(True)
+        self.create_path.setEnabled(True)
+        self.delete_path.setEnabled(True)
+        self.save_scan.setEnabled(True)
+        self.start_scan.setEnabled(True)
+        self.delete_position.setEnabled(True)
+        self.set_origin.clicked.setEnabled(False)
 
+
+        
     def saveScanParam(self):
         name, _ = QFileDialog.getSaveFileName(self, 'Save scan file', filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
         if name:
@@ -868,7 +873,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         all_coords = []
         for i in range(self.points_3d.count()):
             coords = self.points_3d.item(i).text().split(',')
-            all_coords.append(coords)
+            all_coords.append(self.points_3d.item(i))
             new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0], float(coords[c1]) + origin[c1])
             c0_values.append(float(coords[c0]) + origin[c0])
             c1_values.append(float(coords[c1]) + origin[c1])
@@ -928,7 +933,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                     "pyrame_string": [vol_id, "space_1",math_module,math_function, new_coords, ext_axis,"%s" % (axis_min+origin[c2]),"%s" % (axis_max+origin[c2])],
                     "coords": [x_plot_min,x_plot_max,y_plot_min,y_plot_max,z_plot_min,z_plot_max],
                     "points_3d": all_coords,
-                    "origin": origin
+                    "origin": [str(i) for i in origin]
                     }
 
                 self.save_scan.setEnabled(True)
@@ -957,7 +962,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             print("removing ",p)
 
     def setVolumeParameters(self):
-        pass
+        print("setVolumeParameters called") 
+        vol_data = self.vol_path_3d_data["volumes"][self.volume_choice.currentText()]
+        for d,v in zip(self.AXIS_3D,vol_data["origin"]):
+            getattr(self, "%s_origin" % d).setText(v)
+        self.setOrigin()
+        self.points_3d.addItems(vol_data["points_3d"])
+        print(vol_data)
 
     def createPath(self):
         map_xyzton={
@@ -986,7 +997,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
                         "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)],
-                        "nb_points":float(res.split(":")[0])
+                        "nb_points": float(res.split(":")[0]),
+                        "path_type": path_type,
+                        "path_directions": path_directions
                     }
 
                 self.start_scan.setEnabled(True)
@@ -1009,8 +1022,17 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.vol_path_3d_data["paths"].pop(path_id)
 
     def setPathParameters(self):
-        pass
-
+        path_id = self.path_choice.currentText()
+        path_data = self.vol_path_3d_data["paths"][path_id]
+        self.scan_x_step.setText(str(path_data["steps"][0]))
+        self.scan_y_step.setText(str(path_data["steps"][1]))
+        self.scan_z_step.setText(str(path_data["steps"][2]))
+        self.pathtype_choice.setCurrentText(path_data["path_type"])
+        self.direction_choice.setCurrentText(path_data["path_directions"])
+ 
+        vol_id = path_data["vol_id"]
+        self.volume_choice.setCurrentText(vol_id)
+        
     def reportField(self):
         self.plot_point_index += 1
         #p, f = n.split(";")
