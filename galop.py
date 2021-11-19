@@ -1023,11 +1023,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             path_directions = self.direction_choice.currentText()
             retcode, res = self.pyrame.call("init_path@paths",path_id, "space_1", vol_id, scan_x_step, scan_y_step, scan_z_step, path_order, path_type, path_directions)
             if retcode == 1:
+                nb_points, scan_points = res.split(":")
+                print(scan_points)
                 self.vol_path_3d_data["paths"][path_id]= {
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
                         "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)],
-                        "nb_points": float(res.split(":")[0]),
+                        "nb_points": float(nb_points),
                         "path_type": path_type,
                         "path_directions": path_directions
                     }
