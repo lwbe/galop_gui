@@ -189,10 +189,13 @@ class Pyrame(object):
         elif pyrame_func.startswith("init_volume"):
             # extract the points"
             c0, c1 = [], []
+            self.poly_coords = []
             for i in args[4].split(";")[:-1]:
                 x, y = [float(j) for j in i.split(",")]
                 c0.append(x)
                 c1.append(y)
+                self.poly_coords.append((x,y))
+            self.poly_coords=np.array(self.poly_coords)
             if args[5] == "z":
                 self.x_limits = [np.min(c0), np.max(c0)]
                 self.y_limits = [np.min(c1), np.max(c1)]
@@ -201,11 +204,15 @@ class Pyrame(object):
             self.x_step = float(args[3])
             self.y_step = float(args[4])
             self.z_step = float(args[5])
+            steps = [self.x_step,self.y_step,self.z_step]
             self.order = args[6]
             self.scan_type = args[7]
-            self.points = paths.generate_points2(*self.x_limits, self.x_step,
-                                                 *self.y_limits, self.y_step,
-                                                 *self.z_limits, self.z_step)
+            #self.points = paths.generate_points2(*self.x_limits, self.x_step,
+            #                                     *self.y_limits, self.y_step,
+            #                                     *self.z_limits, self.z_step)
+            self.points = paths.generate_path_4(self.poly_coords,
+                                                self.z_limits,
+                                                steps,self.order,self.scan_type,"ppp")
             self.max_points= self.points.shape[0]
             retval = str(self.max_points)
         elif pyrame_func.startswith("move_first"):
