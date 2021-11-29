@@ -1,0 +1,27 @@
+Le repertoire ou se trouve le logiciel est 
+
+/root/Devel/galop_gui
+
+Donc soit on y est soit
+cd /root/Devel/galop_gui
+
+Le prompt du shell doit être 
+(galop_gui) [root@llrgaussbench galop_gui]
+
+C'est à dire demarrer par (galop_gui) cela indique que l'environement python est bien démarré.
+
+Si ce n'est pas le cas
+
+conda activate galop_gui
+
+et le prompt doit devenir comme ci dessus.
+
+Ensuite pour étre sur que tout demarre correctement en particulier en cas de crash il faut taper:
+
+./demarre_pyrame.sh
+
+puis pour lancer l'application
+
+LANG=en_US.UTF-8 python ./galop.py &
+
+

@@ -1030,13 +1030,23 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             path_directions = self.direction_choice.currentText()
             retcode, res = self.pyrame.call("init_path@paths",path_id, "space_1", vol_id, scan_x_step, scan_y_step, scan_z_step, path_order, path_type, path_directions)
             if retcode == 1:
+                nb_points, scan_points = res.split(":")
+
+                X,Y,Z = [],[],[]
+                for i in scan_points.split(";"):
+                    x,y,z = i.split(",")
+                    X.append(float(x))
+                    Y.append(float(y))
+                    Z.append(float(z))
+
                 self.vol_path_3d_data["paths"][path_id]= {
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
                         "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)],
-                        "nb_points": float(res.split(":")[0]),
+                        "nb_points": float(nb_points),
                         "path_type": path_type,
-                        "path_directions": path_directions
+                        "path_directions": path_directions,
+                        "scan_coords": [np.min(X),np.max(X),np.min(Y),np.max(Y),np.min(Z),np.max(Z)]
                     }
 
                 self.start_scan.setEnabled(True)
@@ -1161,7 +1171,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.scan3d_plot = Scan3dPlotDialog(self.worker)
         vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
         steps = self.vol_path_3d_data["paths"][path_id]["steps"]
-        coords = self.vol_path_3d_data["volumes"][vol_id]["coords"]
+        coords = self.vol_path_3d_data["paths"][path_id]["scan_coords"]
         self.nb_plot_points = self.vol_path_3d_data["paths"][path_id]["nb_points"]
         Nx = int((10.*coords[1] - 10*coords[0]) / (10.*steps[0])) + 1
         Ny = int((10.*coords[3] - 10*coords[2]) / (10.*steps[1])) + 1
