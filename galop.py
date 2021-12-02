@@ -127,11 +127,13 @@ class Pyrame(object):
     def __init__(self,parent):
         self.module_port = {}
         self.parent = parent
-        self.simulated_position = [ 0, 0,0]
-        self.simulated_field = [ 0, 0,0, 0]
-        self.x_limits, self.y_limits, self.z_limits = None, None, None
-        self.x_step, self.y_step, self.z_step = None, None, None
-        self.points = None
+        self.simulated_position = [0, 0, 0]
+        self.simulated_field = [0, 0, 0, 0]
+        self.poly_coords = None
+        self.ext_axis = None
+        self.ext_limits = None
+        self.points = {}
+        self.max_points = {}
 
      # Pyrame Stuff
     def initModules(self,pyrame_modules_configuration):
@@ -165,6 +167,7 @@ class Pyrame(object):
 
     def call_simulate(self, pyrame_func, *args):
         QApplication.setOverrideCursor(Qt.WaitCursor)
+        print("pyrame call :", pyrame_func, args)
         retval = "ok"
         if pyrame_func.startswith("init@"):
             pass
@@ -187,60 +190,72 @@ class Pyrame(object):
         elif pyrame_func.startswith("move_space@"):
             self.simulated_position = [float(args[1]), float(args[2]), float(args[3])]
         elif pyrame_func.startswith("init_volume"):
-            # extract the points"
-            c0, c1 = [], []
+            # le prototype de la fonction est
+            # "init_volume@paths",\
+            #    0       1          2             3              4          5         6         7
+            # vol_id, "space_1", math_module, math_function, new_coords, ext_axis, axis_min, axis_max
+
+            # on extrait les points
             self.poly_coords = []
             for i in args[4].split(";")[:-1]:
-                x, y = [float(j) for j in i.split(",")]
-                c0.append(x)
-                c1.append(y)
-                self.poly_coords.append((x,y))
-            self.poly_coords=np.array(self.poly_coords)
-            if args[5] == "z":
-                self.x_limits = [np.min(c0), np.max(c0)]
-                self.y_limits = [np.min(c1), np.max(c1)]
-                self.z_limits = [float(args[6]), float(args[7])]
+                self.poly_coords.append([float(j) for j in i.split(",")])
+            self.poly_coords = np.array(self.poly_coords)
+            self.ext_axis = args[5]
+            self.ext_limits = [float(args[6]), float(args[7])]
+
         elif pyrame_func.startswith("init_path"):
-            self.x_step = float(args[3])
-            self.y_step = float(args[4])
-            self.z_step = float(args[5])
-            steps = [self.x_step,self.y_step,self.z_step]
-            self.order = args[6]
-            self.scan_type = args[7]
-            #self.points = paths.generate_points2(*self.x_limits, self.x_step,
-            #                                     *self.y_limits, self.y_step,
-            #                                     *self.z_limits, self.z_step)
-            self.points = paths.generate_path_4(self.poly_coords,
-                                                self.z_limits,
-                                                steps,self.order,self.scan_type,"ppp")
-            self.max_points= self.points.shape[0]
-            retval = str(self.max_points)
+            # le prototype de la fonction est
+            # init_path@paths",
+            # et les arguments
+            #   0         1          2         3          4              5          6          7           8
+            # path_id, "space_1", vol_id, scan_x_step, scan_y_step, scan_z_step, path_order, path_type, path_directions
+
+            steps = [float(args[3]), float(args[4]), float(args[5])]
+            path_order = args[6]
+            path_type = args[7]
+            path_directions = args[8]
+            path_id = args[0]
+            self.points[path_id] = paths.generate_path(self.poly_coords, self.ext_axis, self.ext_limits,
+                                                steps, path_order, path_type, path_directions)
+            self.max_points[path_id] = self.points[path_id].shape[0]
+            retval = "ok"
+        elif pyrame_func.startswith("get_path_length"):
+            path_id = args[0]
+            retval = "%s" % self.max_points[path_id]
+        elif pyrame_func.startswith("get_path"):
+            path_id = args[0]
+            retval = ";".join(["%s,%s,%s" % (p[0], p[1], p[2]) for p in self.points[path_id]])
         elif pyrame_func.startswith("move_first"):
+            path_id = args[0]
+            print("path_id ", path_id)
             self.current_point = 0
-            self.simulated_position = self.points[self.current_point]
+            self.simulated_position = self.points[path_id][self.current_point]
             x, y, z = self.simulated_position
             bx = np.sin(np.pi * x) * np.cos(np.pi * y) * np.cos(np.pi * z)
             by = -np.cos(np.pi * x) * np.sin(np.pi * y) * np.cos(np.pi * z)
             bz = (np.sqrt(2.0 / 3.0) * np.cos(np.pi * x) * np.cos(np.pi * y) * np.sin(np.pi * z))
             bn = np.sqrt(bx*bx + by*by + bz*bz)
             self.simulated_field = [bx,by,bz,bn]
-            time.sleep(1)
+            time.sleep(0.1)
+
         elif pyrame_func.startswith("move_next"):
+            path_id = args[0]
+
             self.current_point += 1
-            print(self.current_point,self.max_points)
-            if self.current_point == self.max_points:
+            print(self.current_point, self.max_points)
+            if self.current_point == self.max_points[path_id]:
                 retval = "finished"
             else:
-                self.simulated_position = self.points[self.current_point]
+                self.simulated_position = self.points[path_id][self.current_point]
                 x, y, z = self.simulated_position
                 bx = np.sin(np.pi * x) * np.cos(np.pi * y) * np.cos(np.pi * z)
                 by = -np.cos(np.pi * x) * np.sin(np.pi * y) * np.cos(np.pi * z)
                 bz = (np.sqrt(2.0 / 3.0) * np.cos(np.pi * x) * np.cos(np.pi * y) * np.sin(np.pi * z))
                 bn = np.sqrt(bx * bx + by * by + bz * bz)
                 self.simulated_field = [bx, by, bz, bn]
-                time.sleep(1)
+                time.sleep(0.5)
         else:
-            print("pyrame call :", pyrame_func, args)
+            print("pyrame call : UNKNOWN function", pyrame_func, args)
         QApplication.restoreOverrideCursor()
         return 1, retval
 
@@ -252,8 +267,6 @@ class Pyrame(object):
         :param args: the args of the function
         :return: the return of the pyrame module
         """
-
-
         if SIMULATE:
             return self.call_simulate(pyrame_func, *args)
 
@@ -294,7 +307,7 @@ class Worker(QObject):
         self._isrunning = False
 
     def suspend(self):
-        self._issuspended = not self._is0suspended
+        self._issuspended = not self._issuspended
 
     def run(self):
         retcode, res = self.pyrame.call("move_first@paths", *self.move_params)
@@ -388,7 +401,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         #self.canvas = FigureCanvas(self.fig) #QtWidgets.QWidget(Form)
         # in the pyuic file
 
-        self.fig = Figure()  #figsize=(5, 3))
+        self.fig = Figure(figsize=(10, 7.5))
         self.setupUi(self)
 
         #self.fig = Figure(figsize=(5, 3))
@@ -436,7 +449,9 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.Y = np.linspace(yi, yf, ny)
         self.Z = np.linspace(zi, zf, nz)
         self.all_elements = nx*ny*nz
+        self.update_field()
         self.update_layers()
+        # should not be needed
         self.update_plot_params()
 
     def update_field(self):
@@ -493,9 +508,11 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
     def update_plot_data(self, position, field):
         x, y, z = [float(i) for i in position.split(",")]
         # give the index in the coordinates
-        print(" update_plot_data:x",x," self.X ",self.X)
+        #print(" update_plot_data:x",x," self.X ",self.X)
         i = np.where(np.isclose(self.X,  x))[0][0]
+        #print(" update_plot_data:y",y," self.Y ",self.Y)
         j = np.where(np.isclose(self.Y,  y))[0][0]
+        #print(" update_plot_data:z",z," self.Z ",self.Z)
         k = np.where(np.isclose(self.Z,  z))[0][0]
         self.Field[i, j, k] = [float(i) for i in field.split(",")]
         self.update_plot()
@@ -693,7 +710,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for path_id in self.vol_path_3d_data["paths"]:
             pv = self.vol_path_3d_data["paths"][path_id]
             retcode, res = self.pyrame.call("init_path@paths", *pv['pyrame_string'])
-            print("loadScanParams:res ",res)
+            #print("loadScanParams:res ",res)
             self.path_choice.addItem(path_id)
         self.path_choice.blockSignals(False)
 
@@ -845,12 +862,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def homing(self):
         dlg = orderedMovement_Dialog()
         dlg.explanation.setText("Order axis for Homing. Check twice !!")
-        dlg.orderCombo.addItems(self.PATH_ORDER+["x","y","z"])
+        dlg.orderCombo.addItems(self.PATH_ORDER+["x", "y", "z"])
         if dlg.exec_():
             for d in dlg.orderCombo.currentText():          
-                retcode, res = self.pyrame.call("home@motion", "axis_%s" % d,"r","1")
+                retcode, res = self.pyrame.call("home@motion", "axis_%s" % d, "r", "1")
                 if retcode == 1:
-                   self.updatePositionWidget()
+                    self.updatePositionWidget()
        
     def addCurrentPosition(self):
         """
@@ -881,7 +898,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if ext_axis == "x":
             c0, c1, c2 = 1, 2, 0
         elif ext_axis == "y":
-            c0, c1, c2 = 0, 2, 1
+            c0, c1, c2 = 2, 0, 1
         elif ext_axis == "z":
             c0, c1, c2 = 0, 1, 2
 
@@ -1028,13 +1045,21 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             path_id = dlg.lineEditField.text()
             path_type = self.pathtype_choice.currentText()
             path_directions = self.direction_choice.currentText()
-            retcode, res = self.pyrame.call("init_path@paths",path_id, "space_1", vol_id, scan_x_step, scan_y_step, scan_z_step, path_order, path_type, path_directions)
+            retcode, res = self.pyrame.call("init_path@paths", path_id, "space_1", vol_id,
+                                            scan_x_step, scan_y_step, scan_z_step,
+                                            path_order, path_type, path_directions)
             if retcode == 1:
-                nb_points, scan_points = res.split(":")
 
-                X,Y,Z = [],[],[]
+                retcode, res = self.pyrame.call("get_path@paths", "path_id")
+                if retcode == 1:
+                    scan_points = res
+                retcode, res = self.pyrame.call("get_path_length@paths", "path_id")
+                if retcode == 1:
+                    nb_points = res
+
+                X, Y, Z = [], [], []
                 for i in scan_points.split(";"):
-                    x,y,z = i.split(",")
+                    x, y, z = i.split(",")
                     X.append(float(x))
                     Y.append(float(y))
                     Z.append(float(z))
@@ -1043,7 +1068,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                         "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
                         "vol_id": vol_id,
                         "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)],
-                        "nb_points": float(nb_points),
+                        "nb_points": int(nb_points),
                         "path_type": path_type,
                         "path_directions": path_directions,
                         "scan_coords": [np.min(X),np.max(X),np.min(Y),np.max(Y),np.min(Z),np.max(Z)]
@@ -1101,7 +1126,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         #p, f = n.split(";")
         # updating the widget set he value of position and field in the interface
         self.scan3d_plot.scan3d_progress.setValue(100.*self.plot_point_index/self.nb_plot_points)
-        
+        current_time = time.time()
+        remaining_time = (current_time - self.scan3d_plot_time_previous_step) * (self.nb_plot_points-self.plot_point_index)
+        self.scan3d_plot.scan3d_timeleft.setText("%ss" % int(remaining_time))
+        self.scan3d_plot_time_previous_step = current_time
         #self.updatePositionWidget()
         #self.updateGaussmeterWidget()
 
@@ -1182,6 +1210,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         print("Data structure",data_structure)
         self.scan3d_plot.init_plot_data(data_structure)
         self.scan3d_plot.show()
+        self.scan3d_plot.scan3d_nbpoints.setText(str(self.nb_plot_points))
+        self.scan3d_plot_time_previous_step = time.time()
         self.thread.start()
 
     def open_data_filename(self):

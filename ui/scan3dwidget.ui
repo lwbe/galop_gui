@@ -2,6 +2,9 @@
 <ui version="4.0">
  <class>Form</class>
  <widget class="QWidget" name="Form">
+  <property name="windowModality">
+   <enum>Qt::ApplicationModal</enum>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,15 +14,15 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>field plot</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_3">
    <item row="0" column="0">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
       <widget class="QWidget" name="canvas" native="true"/>
      </item>
-     <item>
+     <item row="1" column="0">
       <widget class="QGroupBox" name="groupBox">
        <property name="minimumSize">
         <size>
@@ -117,7 +120,7 @@
        </widget>
       </widget>
      </item>
-     <item>
+     <item row="2" column="0">
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <widget class="QProgressBar" name="scan3d_progress">
@@ -134,7 +137,47 @@
           </size>
          </property>
          <property name="value">
-          <number>24</number>
+          <number>0</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>nb. points:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="scan3d_nbpoints">
+         <property name="minimumSize">
+          <size>
+           <width>40</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Time left:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="scan3d_timeleft">
+         <property name="minimumSize">
+          <size>
+           <width>40</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>0</string>
          </property>
         </widget>
        </item>
