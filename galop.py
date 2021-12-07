@@ -97,13 +97,6 @@ pyrame_modules_configuration = {
             "config": ["300", "0"]
         },
     },
-#    "multimeter": {
-#        "gaussmeter": {
-#            "init": [
-#                "ls_460(bus=gpib(bus=serial(vendor=0403,product=6001,timeout=10),dst_addr=12),Bunits=T,Bmode=0,Bfilter=0,nb_channels=3)"],
-#            "config": []
-#        },
-#    },
     "ls_460": {
         "gaussmeter": {
             "init": [
@@ -111,18 +104,11 @@ pyrame_modules_configuration = {
             "config": []
         },
     },
-    "paths": {
-        "space_1": {
-            "init_order": ["init_space"],
-            "deinit_order": ["deinit_space"],
-            "init_space": ["axis_x", "axis_y", "axis_z", "0.1", "0.1", "0.1"]
-        }
-    }
 }
 
 SIMULATE = None
 
-
+############################################################################################################
 class Pyrame(object):
     def __init__(self,parent):
         self.module_port = {}
@@ -289,7 +275,7 @@ class Pyrame(object):
         QApplication.restoreOverrideCursor()
         return retcode, res
 
-
+############################################################################################################
 # thread for scan
 class Worker(QObject):
     finished = pyqtSignal()
@@ -329,7 +315,7 @@ class Worker(QObject):
 
         self.finished.emit()
 
-
+############################################################################################################
 # Custom widget
 class orderedMovement_Dialog(QDialog):
     def __init__(self, parent=None):
@@ -355,7 +341,7 @@ class orderedMovement_Dialog(QDialog):
         self.layout.addWidget(self.buttonBox, 2, 0, 1, 2)
         self.setLayout(self.layout)
 
-
+############################################################################################################
 class askForName(QDialog):
         def __init__(self, parent=None):
             super().__init__(parent)
@@ -383,7 +369,7 @@ class askForName(QDialog):
 #        self.setupUi(self)
 #        self.stop.clicked.connect(self.close)
 
-
+############################################################################################################
 # 3D scan class
 #class Scan3dPlotDialog(QDialog, Ui_Dialog):
 class Scan3dPlotDialog(QDialog, Ui_Form):
@@ -404,12 +390,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.fig = Figure(figsize=(10, 7.5))
         self.setupUi(self)
 
-        #self.fig = Figure(figsize=(5, 3))
-        #self.canvas = FigureCanvas(self.fig)
-        #self.widget = self.canvas
-        #self.fig=self.widget.fig
-        #self.canvas = self.widget.canvas
-
         self.scan3d_stop.clicked.connect(self.stop)
         self.scan3d_suspend.clicked.connect(self.suspend)
         self.scan3d_update.setChecked(True)
@@ -425,7 +405,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
 
         self.scan3d_fieldcomponent.currentTextChanged.connect(self.update_field)
 
-        #self.fig.set_canvas(self.canvas)
         self._ax = self.canvas.figure.add_subplot(projection="3d")
         self._ax.view_init(30, 30)
         self.plot_object = None
@@ -487,7 +466,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.update_plot_params()
 
     def update_plot_params(self):
-
         plane = self.scan3d_plane.currentText()
         index_layer = self.scan3d_layer.currentIndex()
         self.scan3d_layer_slider.setValue(index_layer)
@@ -571,7 +549,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
 
         self.canvas.draw()
 
-
+############################################################################################################
 # The main class
 class MainWindow(QMainWindow,Ui_MainWindow):
     AXIS_3D = ["x", "y", "z"]
@@ -593,8 +571,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         
         self.volume_nid = 0
         self.path_nid = 0
+
+        # call pyrame
         self.pyrame = Pyrame(self)
         self.pyrame.initModules(pyrame_modules_configuration)
+
         self.setInitialValues()
 
         # setting QDoubleValidator for all QLineEdit widgets
@@ -672,16 +653,19 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         sender.setStyleSheet('QLineEdit { background-color: %s }' % color)
 
     def getPositionDebug(self):
-        retcode, res = self.pyrame.call("get_position@paths", "space_1")
+        position = []
+        for a in self.AXIS_3D:
+            retcode, res = self.pyrame.call("get_pos@motions", "axis_%s" % a)
+            position.append(res)
         if retcode == 1:
-            self.statusbar.showMessage(res)
+            self.statusbar.showMessage(str(position))
         else:
             self.statusbar.showMessage("Error: cannot get position")
 
     def getFieldDebug(self):
         r = ''
         for a in self.AXIS_3D:
-            cr = getattr(self,"field_range_%s"% a).currentText()[0]  # only the first character means a,0,1,2,3,c
+            cr = getattr(self, "field_range_%s" % a).currentText()[0]  # only the first character means a,0,1,2,3,c
             if cr == 'c':
                 cr ='a'
             r += cr
@@ -701,7 +685,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.volume_choice.blockSignals(True)
         for vol_id in self.vol_path_3d_data["volumes"]:
             dv = self.vol_path_3d_data["volumes"][vol_id]
-            retcode, res = self.pyrame.call("init_volume@paths", *dv['pyrame_string'])
+            #retcode, res = self.pyrame.call("init_volume@paths", *dv['pyrame_string'])
             
             self.volume_choice.addItem(vol_id)
         self.volume_choice.blockSignals(False)
@@ -709,7 +693,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.path_choice.blockSignals(True)
         for path_id in self.vol_path_3d_data["paths"]:
             pv = self.vol_path_3d_data["paths"][path_id]
-            retcode, res = self.pyrame.call("init_path@paths", *pv['pyrame_string'])
+            #retcode, res = self.pyrame.call("init_path@paths", *pv['pyrame_string'])
             #print("loadScanParams:res ",res)
             self.path_choice.addItem(path_id)
         self.path_choice.blockSignals(False)
@@ -766,11 +750,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if values:
             p = values.split(",")
         else:
-            retcode, res = self.pyrame.call("get_position@paths", "space_1")
-            if retcode == 1:
-                p = res.split(',')
-            else:
-                return
+            p = []
+            for a in self.AXIS_3D:
+                retcode, res = self.pyrame.call("get_pos@motions", "axis_%s" % a)
+                if retcode == 1:
+                    p.append(res)
+                else:
+                    return
         for a, c in zip(self.AXIS_3D, p):
             w = getattr(self, "%s_global" % a )
             w.setText(c)
@@ -784,7 +770,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if values == None:
             r = ""
             for a in self.AXIS_3D:
-                cr = getattr(self,"field_range_%s"% a).currentText()[0]  # only the first character means a,0,1,2,3,c
+                cr = getattr(self, "field_range_%s"% a).currentText()[0]  # only the first character means a,0,1,2,3,c
                 if cr == 'c':
                     cr ='a'
                 r += cr
@@ -813,29 +799,35 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.updateGaussmeterWidget()
 
     def move(self):
-        # extract axis and direction from the button name
-
-        pos = []
-        speed = []
-        acc = []
-        for a in self.AXIS_3D:
-            pos.append(getattr(self, "%s_global" % a).text())
-            speed.append(getattr(self, "%s_speed" % a).text())
-            acc.append(getattr(self, "%s_acc" % a).text())
+        # les boutons et TextField qui peuvent qppeler cette methode on comme
+        # noms {x,y,z}_{p,m} pour les boutons de plus et de moins
+        # noms {x,y,z}_{local,global} pour les TextField  de plus et de moins
 
         axis, suffix = self.sender().objectName().split("_")
         axis_index = self.AXIS_3D.index(axis)
 
-        if suffix == "local":
-            pos[axis_index] = "%f" % (float(getattr(self, "%s_local" % axis).text()) + float(getattr(self, "%s_origin" % axis).text()))
-        elif suffix in ["p","m"]:
+        speed = getattr(self, "%s_speed" % axis).text()
+        acc = getattr(self, "%s_acc" % axis).text()
+
+        if suffix in ["p", "m"]:
             step = float(getattr(self, "%s_step" % axis).text())
             if suffix == "m":
                 step = -step
-            pos[axis_index] = "%f" % (float(getattr(self, "%s_global" % axis).text())+step)
+        elif suffix in ["local", "global"]:
+            # comme on ne connait pas la différence entre la position courante et la position demandée il faut
+            # récupérer  la valeur courante pour calculer la différence
+            retcode, res = self.pyrame.call("get_pos@motions", "axis_%s" % axis)
+            curr_pos = float(res)
+            if suffix == "local":
+                local_pos = getattr(self, "%s_local" % axis).text()
+                origin = getattr(self, "%s_origin" % axis).text()
+                pos = float(local_pos)+float(origin)
+            else:
+                pos = float(getattr(self, "%s_global" % axis).text())
+            step = str(pos - curr_pos)
 
-        print("moving to pos",pos)
-        retcode, res = self.pyrame.call("move_space@paths","space_1",*(pos+speed+acc))
+        print("move: axis %s step %s speed %s acc %s" % (axis, step, speed, acc))
+        retcode, res = self.pyrame.call("move@motion","axis_%s" % axis, step, speed, acc)
         if retcode == 1:
             self.updatePositionWidget()
 
@@ -894,135 +886,189 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.create_volume.setEnabled(False)
             self.set_origin.setEnabled(True)
 
-    def createVolume(self):
-        ext_axis = self.extrusion_axis.currentText()
-        if ext_axis == "x":
-            c0, c1, c2 = 1, 2, 0
-        elif ext_axis == "y":
-            c0, c1, c2 = 2, 0, 1
-        elif ext_axis == "z":
-            c0, c1, c2 = 0, 1, 2
+        def createVolume(self):
+            # on récupére les données de l'interface pour décrire le volume
 
-        origin = []
-        for a in self.AXIS_3D:
-            origin.append(float(getattr(self, "%s_origin" % a).text()))
+            ext_axis = self.extrusion_axis.currentText()
+            ext_axis_start = float(getattr(self, "min_extrusion").text())
+            ext_axis_end = float(getattr(self, "max_extrusion").text())
 
-        axis_min = float(getattr(self, "min_extrusion").text())
-        axis_max = float(getattr(self, "max_extrusion").text())
-        c0_values = []
-        c1_values = []
-        new_coords = ""
-        all_coords = []
-        nb_points_3d = self.points_3d.count()
-        # since by construction the las point should be equal to the first point we add one and take the index modulo the number of points
-        for i in range(nb_points_3d+1):
-            coords = self.points_3d.item(i % nb_points_3d).text().split(',')
-            all_coords.append(self.points_3d.item(i % nb_points_3d).text())
-            new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0], float(coords[c1]) + origin[c1])
-            c0_values.append(float(coords[c0]) + origin[c0])
-            c1_values.append(float(coords[c1]) + origin[c1])
+            origin = np.array([float(getattr(self, "%s_origin" % a).text()) for a in self.AXIS_3D])
 
+            points = []
+            for p in range(self.points_3d.count()):
+                points.append([float(i) for i in self.points_3d.item(p).text()])
 
-        # we need to ask for a name for the vol_id
-        dlg = askForName()
-        dlg.message.setText("Enter volume id")
-        dlg.lineEditField.setText("vol_%d" % self.volume_nid)
-        if dlg.exec_():
-            vol_id = dlg.lineEditField.text()
-            math_module = "prism2"
-            math_function = "prism"
-            retcode, res = self.pyrame.call("init_volume@paths",
-                                           vol_id,
-                                           "space_1",
-                                           math_module,
-                                           math_function,
-                                           new_coords,
-                                           ext_axis,
-                                           "%s" % (axis_min+origin[c2]),
-                                           "%s" % (axis_max+origin[c2]))
-            if retcode == 1:
-                if ext_axis == "z":
-                    x_plot_min = np.min(c0_values)
-                    x_plot_max = np.max(c0_values)
-                    y_plot_min = np.min(c1_values)
-                    y_plot_max = np.max(c1_values)
-                    a1 = axis_min+origin[c2]
-                    a2 = axis_max+origin[c2]
-                    z_plot_min = a1 if a1 < a2 else a2
-                    z_plot_max = a1 if a1 > a2 else a2
-                elif ext_axis == "y":
-                    x_plot_min = np.min(c0_values)
-                    x_plot_max = np.max(c0_values)
-                    a1 = axis_min + origin[c2]
-                    a2 = axis_max + origin[c2]
-                    y_plot_min = a1 if a1 < a2 else a2
-                    y_plot_max = a1 if a1 > a2 else a2
-                    z_plot_min = np.min(c1_values)
-                    z_plot_max = np.max(c1_values)
-                elif ext_axis == "x":
-                    a1 = axis_min + origin[c2]
-                    a2 = axis_max + origin[c2]
-                    x_plot_min = a1 if a1 < a2 else a2
-                    x_plot_max = a1 if a1 > a2 else a2
-                    y_plot_min = np.min(c0_values)
-                    y_plot_max = np.max(c0_values)
-                    z_plot_min = np.min(c1_values)
-                    z_plot_max = np.max(c1_values)
+            points = np.array(points) + origin
 
+            # dans le polyhedre définit par l'extrusion l'axe d'extrusion est note Z
+            # la matrice de transformation est
+            plot_boundaries = np.ndarray(3, 2)
+            if ext_axis == "x":
+                coord_m = [1, 2, 0]
+            elif ext_axis == "y":
+                coord_m = [2, 0, 1]
+            elif ext_axis == "z":
+                coord_m = [0, 1, 2]
 
-                self.vol_path_3d_data["volumes"][vol_id] = {
-                    "pyrame_string": [vol_id, "space_1",math_module,math_function, new_coords, ext_axis,"%s" % (axis_min+origin[c2]),"%s" % (axis_max+origin[c2])],
-                    "coords": [x_plot_min,x_plot_max,y_plot_min,y_plot_max,z_plot_min,z_plot_max],
-                    "points_3d": all_coords,
-                    "origin": [str(i) for i in origin]
+            X, Y, Z = coord_m
+            plot_boundaries[Z] = [min(ext_axis_end,ext_axis_start), max(ext_axis_end,ext_axis_start)]
+            polygone_points = points[:, [X,Y]]
+            plot_boundaries[X] = [min(points[:,X]) ,max(points[:,X])]
+            plot_boundaries[Y] = [min(points[:,Y]) ,max(points[:,Y])]
+           # we need to ask for a name for the vol_id
+            dlg = askForName()
+            dlg.message.setText("Enter volume id")
+            dlg.lineEditField.setText("vol_%d" % self.volume_nid)
+            if dlg.exec_():
+                vol_id = dlg.lineEditField.text()
+                if not self.vol_path_3d_data["volumes"].get(vol_id):
+                    self.vol_path_3d_data["volumes"][vol_id] = {
+                        "coord_m": coord_m,
+                        "extrusion_axis": ext_axis,
+                        "origin": origin,
+                        "points": points,
+                        "polygone_points": polygone_points,
+                        "plot_boundaries": plot_boundaries
                     }
 
-                self.save_scan.setEnabled(True)
-                self.create_path.setEnabled(True)
-                self.delete_volume.setEnabled(True)
-                self.volume_nid += 1
+                    self.save_scan.setEnabled(True)
+                    self.create_path.setEnabled(True)
+                    self.delete_volume.setEnabled(True)
+                    self.volume_nid += 1
 
-                # avoid triggering the programmatic change of the Qcombobox volume_choice
-                self.volume_choice.blockSignals(True)
-                self.volume_choice.addItem(vol_id)
-                self.volume_choice.setCurrentText(vol_id)
-                self.volume_choice.blockSignals(False)
+                    # avoid triggering the programmatic change of the Qcombobox volume_choice
+                    self.volume_choice.blockSignals(True)
+                    self.volume_choice.addItem(vol_id)
+                    self.volume_choice.setCurrentText(vol_id)
+                    self.volume_choice.blockSignals(False)
+
+        def createVolume_old(self):
+            ext_axis = self.extrusion_axis.currentText()
+            if ext_axis == "x":
+                c0, c1, c2 = 1, 2, 0
+            elif ext_axis == "y":
+                c0, c1, c2 = 2, 0, 1
+            elif ext_axis == "z":
+                c0, c1, c2 = 0, 1, 2
+
+            origin = []
+            for a in self.AXIS_3D:
+                origin.append(float(getattr(self, "%s_origin" % a).text()))
+
+            axis_min = float(getattr(self, "min_extrusion").text())
+            axis_max = float(getattr(self, "max_extrusion").text())
+            c0_values = []
+            c1_values = []
+
+            new_coords = ""
+            all_coords = []
+            nb_points_3d = self.points_3d.count()
+            # since by construction the las point should be equal to the first point we add one and take the index modulo the number of points
+            for i in range(nb_points_3d+1):
+                coords = self.points_3d.item(i % nb_points_3d).text().split(',')
+                all_coords.append(self.points_3d.item(i % nb_points_3d).text())
+                new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0], float(coords[c1]) + origin[c1])
+                c0_values.append(float(coords[c0]) + origin[c0])
+                c1_values.append(float(coords[c1]) + origin[c1])
+
+
+            # we need to ask for a name for the vol_id
+            dlg = askForName()
+            dlg.message.setText("Enter volume id")
+            dlg.lineEditField.setText("vol_%d" % self.volume_nid)
+            if dlg.exec_():
+                vol_id = dlg.lineEditField.text()
+                math_module = "prism2"
+                math_function = "prism"
+                retcode, res = self.pyrame.call("init_volume@paths",
+                vol_id,
+                "space_1",
+                math_module,
+                math_function,
+                new_coords,
+                ext_axis,
+                "%s" % (axis_min+origin[c2]),
+                "%s" % (axis_max+origin[c2]))
+                if retcode == 1:
+                    if ext_axis == "z":
+                        x_plot_min = np.min(c0_values)
+                        x_plot_max = np.max(c0_values)
+                        y_plot_min = np.min(c1_values)
+                        y_plot_max = np.max(c1_values)
+                        a1 = axis_min+origin[c2]
+                        a2 = axis_max+origin[c2]
+                        z_plot_min = a1 if a1 < a2 else a2
+                        z_plot_max = a1 if a1 > a2 else a2
+                    elif ext_axis == "y":
+                        x_plot_min = np.min(c0_values)
+                        x_plot_max = np.max(c0_values)
+                        a1 = axis_min + origin[c2]
+                        a2 = axis_max + origin[c2]
+                        y_plot_min = a1 if a1 < a2 else a2
+                        y_plot_max = a1 if a1 > a2 else a2
+                        z_plot_min = np.min(c1_values)
+                        z_plot_max = np.max(c1_values)
+                    elif ext_axis == "x":
+                        a1 = axis_min + origin[c2]
+                        a2 = axis_max + origin[c2]
+                        x_plot_min = a1 if a1 < a2 else a2
+                        x_plot_max = a1 if a1 > a2 else a2
+                        y_plot_min = np.min(c0_values)
+                        y_plot_max = np.max(c0_values)
+                        z_plot_min = np.min(c1_values)
+                        z_plot_max = np.max(c1_values)
+
+                        self.vol_path_3d_data["volumes"][vol_id] = {
+                            "pyrame_string": [vol_id, "space_1", math_module, math_function, new_coords, ext_axis,
+                                              "%s" % (axis_min + origin[c2]), "%s" % (axis_max + origin[c2])],
+                            "coords": [x_plot_min, x_plot_max, y_plot_min, y_plot_max, z_plot_min, z_plot_max],
+                            "points_3d": all_coords,
+                            "origin": [str(i) for i in origin]
+                        }
+
+                    self.save_scan.setEnabled(True)
+                    self.create_path.setEnabled(True)
+                    self.delete_volume.setEnabled(True)
+                    self.volume_nid += 1
+
+                    # avoid triggering the programmatic change of the Qcombobox volume_choice
+                    self.volume_choice.blockSignals(True)
+                    self.volume_choice.addItem(vol_id)
+                    self.volume_choice.setCurrentText(vol_id)
+                    self.volume_choice.blockSignals(False)
 
     def deleteVolume(self):
         vol_id = self.volume_choice.currentText()
-        self._deleteVolume(vol_id)
+        self.volume_choice.blockSignals(True)
+        index = self.volume_choice.findText(vol_id)
+        self.volume_choice.removeItem(index)
+        self.volume_choice.blockSignals(False)
 
-    def _deleteVolume(self, vol_id):
-        retcode, res = self.pyrame.call("deinit_volume@paths", vol_id)
-        print("deleteVolume: vol_id",vol_id)
-        if retcode == 1:
-            self.volume_choice.blockSignals(True)
-            index = self.volume_choice.findText(vol_id)
-            self.volume_choice.removeItem(index)
-            self.volume_choice.blockSignals(False)
-
-            # update interface if there is no volume to delete anymore
-            if self.volume_choice.count() == 0:
-                self.delete_volume.setEnabled(False)
-                self.create_path.setEnabled(False)
-            # remove from dict
-            self.vol_path_3d_data["volumes"].pop(vol_id)
-            # we need to find the path associated with the volume and remove them
-            path_id_to_remove = [p[0] for p in self.vol_path_3d_data["paths"].items() if p[1]['vol_id'] == vol_id]
-            print("_deleteVolume:path_id_to_remove", path_id_to_remove)
-            for p in path_id_to_remove:
-                print("_deleteVolume:p", p)
-                self._deletePath(p)
+        # update interface if there is no volume to delete anymore
+        if self.volume_choice.count() == 0:
+            self.delete_volume.setEnabled(False)
+            self.create_path.setEnabled(False)
+        # remove from dict
+        self.vol_path_3d_data["volumes"].pop(vol_id)
+        # we need to find the path associated with the volume and remove them
+        path_id_to_remove = [p[0] for p in self.vol_path_3d_data["paths"].items() if p[1]['vol_id'] == vol_id]
+        print("_deleteVolume:path_id_to_remove", path_id_to_remove)
+        for p in path_id_to_remove:
+            print("_deleteVolume:p", p)
+            self._deletePath(p)
 
     def setVolumeParameters(self):
         print("setVolumeParameters called") 
         vol_data = self.vol_path_3d_data["volumes"][self.volume_choice.currentText()]
-        for d,v in zip(self.AXIS_3D, vol_data["origin"]):
-            getattr(self, "%s_origin" % d).setText(v)
+        for d, v in zip(self.AXIS_3D, vol_data["origin"]):
+            getattr(self, "%s_origin" % d).setText(str(v))
             g = getattr(self, "%s_global" % d).text()
-            getattr(self, "%s_local" % d).setText(str(float(v)-float(g)))
+            getattr(self, "%s_local" % d).setText(str(v-float(g)))
         self.points_3d.clear()
-        self.points_3d.addItems(vol_data["points_3d"])
+        for i in vol_data["points"]:
+            print(i)
+        #self.points_3d.addItems(
         print(vol_data)
 
     def createPath(self):

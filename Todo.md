@@ -42,9 +42,9 @@ def init_volume_paths(volume_id,space_id,module,function,*params):
 ### init_path@paths
 
 
-### get_position@paths
 
-Cette fonction appelle get_pos@motion pour chaque axes space["motion%d_id"%(i)] 
+
+
 
     def init_space_paths(space_id,motion1_id,motion2_id,motion3_id,r1,r2,r3):
         "Initialize *space_id* with three id of motion system *motion_id* and three minimal step for each axis *rn*"
@@ -54,6 +54,10 @@ Cette fonction appelle get_pos@motion pour chaque axes space["motion%d_id"%(i)]
         space={"r1":r1,"r2":r2,"r3":r3,"motion1_id":motion1_id,"motion2_id":motion2_id,"motion3_id":motion3_id,"forbidden":""}
         ....
 
+### get_position@paths
+
+
+Cette fonction appelle get_pos@motion pour chaque axes space["motion%d_id"%(i)] 
 
 Code de la fonction.
 
