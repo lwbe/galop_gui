@@ -752,7 +752,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         else:
             p = []
             for a in self.AXIS_3D:
-                retcode, res = self.pyrame.call("get_pos@motions", "axis_%s" % a)
+                retcode, res = self.pyrame.call("get_pos@motion", "axis_%s" % a)
                 if retcode == 1:
                     p.append(res)
                 else:
@@ -886,72 +886,74 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.create_volume.setEnabled(False)
             self.set_origin.setEnabled(True)
 
-        def createVolume(self):
-            # on récupére les données de l'interface pour décrire le volume
+    def createVolume(self):
+        # on récupére les données de l'interface pour décrire le volume
 
-            ext_axis = self.extrusion_axis.currentText()
-            ext_axis_start = float(getattr(self, "min_extrusion").text())
-            ext_axis_end = float(getattr(self, "max_extrusion").text())
+        ext_axis = self.extrusion_axis.currentText()
+        ext_axis_start = float(getattr(self, "min_extrusion").text())
+        ext_axis_end = float(getattr(self, "max_extrusion").text())
 
-            origin = np.array([float(getattr(self, "%s_origin" % a).text()) for a in self.AXIS_3D])
+        origin = np.array([float(getattr(self, "%s_origin" % a).text()) for a in self.AXIS_3D])
 
-            points = []
-            for p in range(self.points_3d.count()):
-                points.append([float(i) for i in self.points_3d.item(p).text()])
+        points = []
+        for p in range(self.points_3d.count()):
+            points.append([float(i) for i in self.points_3d.item(p).text().split(",")])
 
-            points = np.array(points) + origin
+        points = np.array(points) + origin
 
-            # dans le polyhedre définit par l'extrusion l'axe d'extrusion est note Z
-            # la matrice de transformation est
-            plot_boundaries = np.ndarray(3, 2)
-            if ext_axis == "x":
-                coord_m = [1, 2, 0]
-            elif ext_axis == "y":
-                coord_m = [2, 0, 1]
-            elif ext_axis == "z":
-                coord_m = [0, 1, 2]
+        # dans le polyhedre définit par l'extrusion l'axe d'extrusion est note Z
+        # la matrice de transformation est
+        plot_boundaries = np.ndarray([3, 2])
+        if ext_axis == "x":
+            coord_m = [1, 2, 0]
+        elif ext_axis == "y":
+            coord_m = [2, 0, 1]
+        elif ext_axis == "z":
+            coord_m = [0, 1, 2]
 
-            X, Y, Z = coord_m
-            plot_boundaries[Z] = [min(ext_axis_end,ext_axis_start), max(ext_axis_end,ext_axis_start)]
-            polygone_points = points[:, [X,Y]]
-            plot_boundaries[X] = [min(points[:,X]) ,max(points[:,X])]
-            plot_boundaries[Y] = [min(points[:,Y]) ,max(points[:,Y])]
-           # we need to ask for a name for the vol_id
-            dlg = askForName()
-            dlg.message.setText("Enter volume id")
-            dlg.lineEditField.setText("vol_%d" % self.volume_nid)
-            if dlg.exec_():
-                vol_id = dlg.lineEditField.text()
-                if not self.vol_path_3d_data["volumes"].get(vol_id):
-                    self.vol_path_3d_data["volumes"][vol_id] = {
-                        "coord_m": coord_m,
-                        "extrusion_axis": ext_axis,
-                        "origin": origin,
-                        "points": points,
-                        "polygone_points": polygone_points,
-                        "plot_boundaries": plot_boundaries
-                    }
+        X, Y, Z = coord_m
+        plot_boundaries[Z] = [min(ext_axis_end,ext_axis_start), max(ext_axis_end,ext_axis_start)]
+        plot_boundaries[X] = [min(points[:,X]) ,max(points[:,X])]
+        plot_boundaries[Y] = [min(points[:,Y]) ,max(points[:,Y])]
 
-                    self.save_scan.setEnabled(True)
-                    self.create_path.setEnabled(True)
-                    self.delete_volume.setEnabled(True)
-                    self.volume_nid += 1
+        polygon_points = points[:, [X,Y]]
+        
+        # we need to ask for a name for the vol_id
+        dlg = askForName()
+        dlg.message.setText("Enter volume id")
+        dlg.lineEditField.setText("vol_%d" % self.volume_nid)
+        if dlg.exec_():
+            vol_id = dlg.lineEditField.text()
+            if not self.vol_path_3d_data["volumes"].get(vol_id):
+                self.vol_path_3d_data["volumes"][vol_id] = {
+                    "coord_m": coord_m,
+                    "extrusion_axis": ext_axis,
+                    "origin": origin,
+                    "points": points,
+                    "polygon_points": polygon_points,
+                    "plot_boundaries": plot_boundaries
+                }
+                print( self.vol_path_3d_data["volumes"][vol_id])
+                self.save_scan.setEnabled(True)
+                self.create_path.setEnabled(True)
+                self.delete_volume.setEnabled(True)
+                self.volume_nid += 1
+                
+                # avoid triggering the programmatic change of the Qcombobox volume_choice
+                self.volume_choice.blockSignals(True)
+                self.volume_choice.addItem(vol_id)
+                self.volume_choice.setCurrentText(vol_id)
+                self.volume_choice.blockSignals(False)
 
-                    # avoid triggering the programmatic change of the Qcombobox volume_choice
-                    self.volume_choice.blockSignals(True)
-                    self.volume_choice.addItem(vol_id)
-                    self.volume_choice.setCurrentText(vol_id)
-                    self.volume_choice.blockSignals(False)
-
-        def createVolume_old(self):
-            ext_axis = self.extrusion_axis.currentText()
-            if ext_axis == "x":
-                c0, c1, c2 = 1, 2, 0
-            elif ext_axis == "y":
-                c0, c1, c2 = 2, 0, 1
-            elif ext_axis == "z":
-                c0, c1, c2 = 0, 1, 2
-
+    def createVolume_old(self):
+        ext_axis = self.extrusion_axis.currentText()
+        if ext_axis == "x":
+            c0, c1, c2 = 1, 2, 0
+        elif ext_axis == "y":
+            c0, c1, c2 = 2, 0, 1
+        elif ext_axis == "z":
+            c0, c1, c2 = 0, 1, 2
+            
             origin = []
             for a in self.AXIS_3D:
                 origin.append(float(getattr(self, "%s_origin" % a).text()))
