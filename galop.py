@@ -928,12 +928,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.vol_path_3d_data["volumes"][vol_id] = {
                     "coord_m": coord_m,
                     "extrusion_axis": ext_axis,
-                    "origin": origin,
-                    "points": points,
-                    "polygon_points": polygon_points,
-                    "plot_boundaries": plot_boundaries
+                    "origin": origin.tolist(),
+                    "points": points.tolist(),
+                    "polygon_points": polygon_points.tolist(),
+                    "plot_boundaries": plot_boundaries.tolist()
                 }
-                print( self.vol_path_3d_data["volumes"][vol_id])
+                print(self.vol_path_3d_data["volumes"][vol_id])
                 self.save_scan.setEnabled(True)
                 self.create_path.setEnabled(True)
                 self.delete_volume.setEnabled(True)
@@ -1068,10 +1068,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             g = getattr(self, "%s_global" % d).text()
             getattr(self, "%s_local" % d).setText(str(v-float(g)))
         self.points_3d.clear()
-        for i in vol_data["points"]:
-            print(i)
-        #self.points_3d.addItems(
-        print(vol_data)
+        self.points_3d.addItems([",".join(["%s" % c for c in p]) for p in vol_data["points"]])
 
     def createPath(self):
         map_xyzton={
@@ -1083,9 +1080,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         vol_id = self.volume_choice.currentText()
         path_order = "".join([map_xyzton[i] for i in self.path.currentText()])
         
-        scan_x_step = self.scan_x_step.text()
-        scan_y_step = self.scan_y_step.text()
-        scan_z_step = self.scan_z_step.text()
+        steps = [
+            float(self.scan_x_step.text()),
+            float(self.scan_y_step.text()),
+            float(self.scan_z_step.text())
+        ]
 
         dlg = askForName()
         dlg.message.setText("Enter path id")
@@ -1094,6 +1093,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             path_id = dlg.lineEditField.text()
             path_type = self.pathtype_choice.currentText()
             path_directions = self.direction_choice.currentText()
+            path = generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_order, path_type, path_directions)
+
+
             retcode, res = self.pyrame.call("init_path@paths", path_id, "space_1", vol_id,
                                             scan_x_step, scan_y_step, scan_z_step,
                                             path_order, path_type, path_directions)
