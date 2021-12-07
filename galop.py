@@ -727,7 +727,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         # update the GUI  using the path given o
         # self.path_choice.addItem(path_id)
-        self.setPathParameters()
+        if self.vol_path_3d_data["paths"]:
+            self.setPathParameters()
 
         
     def saveScanParam(self):
@@ -928,7 +929,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         dlg.lineEditField.setText("vol_%d" % self.volume_nid)
         if dlg.exec_():
             vol_id = dlg.lineEditField.text()
-            math_module = "prism"
+            math_module = "prism2"
             math_function = "prism"
             retcode, res = self.pyrame.call("init_volume@paths",
                                            vol_id,
