@@ -411,8 +411,19 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self.quiver_mode = False
 
     def stop(self):
+        # on demande confirmation pour fermer le fenêtre si on a pas fini l'acquisition.
+        if self.scan3d_plot.scan3d_stop.text != "Close":
+            button = QMessageBox.question(self,
+                                          "Quit",
+                                          "Are you sure you want to stop ?",
+                                          buttons=QMessageBox.Yes | QMessageBox.No,
+                                          defaultButton=QMessageBox.Yes,
+                                          )
+            if button == QMessageBox.No:
+                return None
         self.working_thread.stop()
         self.accept()
+
 
     def suspend(self):
         self.working_thread.suspend()
@@ -736,12 +747,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if button == QMessageBox.Yes:
             # removing space, volume and paths ids
             # we should also remove paths and volumes
-            self.pyrame.call("deinit_space@paths", "space_1")
-            for i in range(self.volume_choice.count()):
-                print(self.volume_choice.itemText(i))
-                self.pyrame.call("deinit_volume@paths",self.volume_choice.itemText(i))
-            for i in range(self.path_choice.count()):
-                self.pyrame.call("deinit_path@paths",self.path_choice.itemText(i))
+            #self.pyrame.call("deinit_space@paths", "space_1")
+            #for i in range(self.volume_choice.count()):
+            #    print(self.volume_choice.itemText(i))
+            #    self.pyrame.call("deinit_volume@paths",self.volume_choice.itemText(i))
+            #for i in range(self.path_choice.count()):
+            #    self.pyrame.call("deinit_path@paths",self.path_choice.itemText(i))
             
             self.pyrame.deinitModules()
             self.close()
