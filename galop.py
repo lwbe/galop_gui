@@ -928,6 +928,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.vol_path_3d_data["volumes"][vol_id] = {
                     "coord_m": coord_m,
                     "extrusion_axis": ext_axis,
+                    "extrusion_limits": plot_boundaries[Z],
                     "origin": origin.tolist(),
                     "points": points.tolist(),
                     "polygon_points": polygon_points.tolist(),
@@ -945,101 +946,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.volume_choice.setCurrentText(vol_id)
                 self.volume_choice.blockSignals(False)
 
-    def createVolume_old(self):
-        ext_axis = self.extrusion_axis.currentText()
-        if ext_axis == "x":
-            c0, c1, c2 = 1, 2, 0
-        elif ext_axis == "y":
-            c0, c1, c2 = 2, 0, 1
-        elif ext_axis == "z":
-            c0, c1, c2 = 0, 1, 2
-            
-            origin = []
-            for a in self.AXIS_3D:
-                origin.append(float(getattr(self, "%s_origin" % a).text()))
-
-            axis_min = float(getattr(self, "min_extrusion").text())
-            axis_max = float(getattr(self, "max_extrusion").text())
-            c0_values = []
-            c1_values = []
-
-            new_coords = ""
-            all_coords = []
-            nb_points_3d = self.points_3d.count()
-            # since by construction the las point should be equal to the first point we add one and take the index modulo the number of points
-            for i in range(nb_points_3d+1):
-                coords = self.points_3d.item(i % nb_points_3d).text().split(',')
-                all_coords.append(self.points_3d.item(i % nb_points_3d).text())
-                new_coords += "%s,%s;" % (float(coords[c0]) + origin[c0], float(coords[c1]) + origin[c1])
-                c0_values.append(float(coords[c0]) + origin[c0])
-                c1_values.append(float(coords[c1]) + origin[c1])
-
-
-            # we need to ask for a name for the vol_id
-            dlg = askForName()
-            dlg.message.setText("Enter volume id")
-            dlg.lineEditField.setText("vol_%d" % self.volume_nid)
-            if dlg.exec_():
-                vol_id = dlg.lineEditField.text()
-                math_module = "prism2"
-                math_function = "prism"
-                retcode, res = self.pyrame.call("init_volume@paths",
-                vol_id,
-                "space_1",
-                math_module,
-                math_function,
-                new_coords,
-                ext_axis,
-                "%s" % (axis_min+origin[c2]),
-                "%s" % (axis_max+origin[c2]))
-                if retcode == 1:
-                    if ext_axis == "z":
-                        x_plot_min = np.min(c0_values)
-                        x_plot_max = np.max(c0_values)
-                        y_plot_min = np.min(c1_values)
-                        y_plot_max = np.max(c1_values)
-                        a1 = axis_min+origin[c2]
-                        a2 = axis_max+origin[c2]
-                        z_plot_min = a1 if a1 < a2 else a2
-                        z_plot_max = a1 if a1 > a2 else a2
-                    elif ext_axis == "y":
-                        x_plot_min = np.min(c0_values)
-                        x_plot_max = np.max(c0_values)
-                        a1 = axis_min + origin[c2]
-                        a2 = axis_max + origin[c2]
-                        y_plot_min = a1 if a1 < a2 else a2
-                        y_plot_max = a1 if a1 > a2 else a2
-                        z_plot_min = np.min(c1_values)
-                        z_plot_max = np.max(c1_values)
-                    elif ext_axis == "x":
-                        a1 = axis_min + origin[c2]
-                        a2 = axis_max + origin[c2]
-                        x_plot_min = a1 if a1 < a2 else a2
-                        x_plot_max = a1 if a1 > a2 else a2
-                        y_plot_min = np.min(c0_values)
-                        y_plot_max = np.max(c0_values)
-                        z_plot_min = np.min(c1_values)
-                        z_plot_max = np.max(c1_values)
-
-                        self.vol_path_3d_data["volumes"][vol_id] = {
-                            "pyrame_string": [vol_id, "space_1", math_module, math_function, new_coords, ext_axis,
-                                              "%s" % (axis_min + origin[c2]), "%s" % (axis_max + origin[c2])],
-                            "coords": [x_plot_min, x_plot_max, y_plot_min, y_plot_max, z_plot_min, z_plot_max],
-                            "points_3d": all_coords,
-                            "origin": [str(i) for i in origin]
-                        }
-
-                    self.save_scan.setEnabled(True)
-                    self.create_path.setEnabled(True)
-                    self.delete_volume.setEnabled(True)
-                    self.volume_nid += 1
-
-                    # avoid triggering the programmatic change of the Qcombobox volume_choice
-                    self.volume_choice.blockSignals(True)
-                    self.volume_choice.addItem(vol_id)
-                    self.volume_choice.setCurrentText(vol_id)
-                    self.volume_choice.blockSignals(False)
-
     def deleteVolume(self):
         vol_id = self.volume_choice.currentText()
         self.volume_choice.blockSignals(True)
@@ -1055,13 +961,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.vol_path_3d_data["volumes"].pop(vol_id)
         # we need to find the path associated with the volume and remove them
         path_id_to_remove = [p[0] for p in self.vol_path_3d_data["paths"].items() if p[1]['vol_id'] == vol_id]
-        print("_deleteVolume:path_id_to_remove", path_id_to_remove)
         for p in path_id_to_remove:
-            print("_deleteVolume:p", p)
             self._deletePath(p)
 
     def setVolumeParameters(self):
-        print("setVolumeParameters called") 
         vol_data = self.vol_path_3d_data["volumes"][self.volume_choice.currentText()]
         for d, v in zip(self.AXIS_3D, vol_data["origin"]):
             getattr(self, "%s_origin" % d).setText(str(v))
@@ -1093,6 +996,9 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             path_id = dlg.lineEditField.text()
             path_type = self.pathtype_choice.currentText()
             path_directions = self.direction_choice.currentText()
+            extrusion_axis = self.vol_path_3d_data["volumes"][vol_id]["extrusion_axis"]
+            extrusion_limits = self.vol_path_3d_data["volumes"][vol_id]["extrusion_limits]
+
             path = generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_order, path_type, path_directions)
 
 
