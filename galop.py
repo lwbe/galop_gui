@@ -56,7 +56,7 @@ initial_values = {
     "x_step": "5.0",
     "x_acc": "2",
     "x_speed": "2",
-    "y_origin" : "0.0",
+    "y_origin": "0.0",
     "y_step": "5.0",
     "y_acc": "2",
     "y_speed": "2",
@@ -79,7 +79,6 @@ pyrame_modules_list = [
             "gpib",
             "multimeter",
             "ls460",
-            "paths"
         ]
 
 pyrame_modules_configuration = {
@@ -172,7 +171,14 @@ class Pyrame(object):
                 self.simulated_position = [self.simulated_position[0], self.simulated_position[1] + float(args[1]), self.simulated_position[2]]
             else:
                 self.simulated_position = [self.simulated_position[0], self.simulated_position[1], self.simulated_position[2] + float(args[1])]
-
+            # pour simuler des données on calcule la valeur d'une fonction au point d'espace ou on est.
+            x, y, z = self.simulated_position
+            bx = np.sin(np.pi * x) * np.cos(np.pi * y) * np.cos(np.pi * z)
+            by = -np.cos(np.pi * x) * np.sin(np.pi * y) * np.cos(np.pi * z)
+            bz = (np.sqrt(2.0 / 3.0) * np.cos(np.pi * x) * np.cos(np.pi * y) * np.sin(np.pi * z))
+            bn = np.sqrt(bx*bx + by*by + bz*bz)
+            self.simulated_field = [bx,by,bz,bn]
+            time.sleep(0.1)
         elif pyrame_func.startswith("move_space@"):
             self.simulated_position = [float(args[1]), float(args[2]), float(args[3])]
         elif pyrame_func.startswith("init_volume"):
@@ -281,13 +287,14 @@ class Worker(QObject):
     finished = pyqtSignal()
     field = pyqtSignal()
 
-    def __init__(self, move_params, pyrame,master_widget):
+    def __init__(self, path, move_params, pyrame, master_widget):
         super().__init__()
         self._isrunning = True
         self.pyrame = pyrame
         self.move_params = move_params
         self._issuspended = False
         self.master_widget = master_widget
+        self.path = path
 
     def stop(self):
         self._isrunning = False
@@ -296,23 +303,30 @@ class Worker(QObject):
         self._issuspended = not self._issuspended
 
     def run(self):
-        retcode, res = self.pyrame.call("move_first@paths", *self.move_params)
-        self.master_widget.updatePositionWidget()
-        self.master_widget.updateGaussmeterWidget()
-        self.field.emit() #"%s;%s" % (position, field))
+
+        retcode, res = self.pyrame.call("get_pos@motions", "axis_x")
+        x = res
+        retcode, res = self.pyrame.call("get_pos@motions", "axis_y")
+        y = res
+        retcode, res = self.pyrame.call("get_pos@motions", "axis_z")
+        z = res
+        current_point = nd.array([x, y, z])
 
         run = True
+        index = 0
         while run:
             if not self._issuspended:
+                p = path[index]
+                steps = p - current_point
+                retcode, res = self.pyrame.call("move@motion","axis_x", steps[0], speed, acc)
+                retcode, res = self.pyrame.call("move@motion","axis_y", steps[1], speed, acc)
+                retcode, res = self.pyrame.call("move@motion","axis_z", steps[2], speed, acc)
 
-                retcode, res = self.pyrame.call("move_next@paths", *self.move_params)
                 self.master_widget.updatePositionWidget()
                 self.master_widget.updateGaussmeterWidget()
-
-                self.field.emit()
-                if res == "finished" or not self._isrunning :
+                self.field.emit() #"%s;%s" % (position, field))
+                if index == path.shape[0] or not self._isrunning :
                     run = False
-
         self.finished.emit()
 
 ############################################################################################################
@@ -423,7 +437,6 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
                 return None
         self.working_thread.stop()
         self.accept()
-
 
     def suspend(self):
         self.working_thread.suspend()
@@ -926,7 +939,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         plot_boundaries[Z] = [min(ext_axis_end,ext_axis_start), max(ext_axis_end,ext_axis_start)]
         plot_boundaries[X] = [min(points[:,X]) ,max(points[:,X])]
         plot_boundaries[Y] = [min(points[:,Y]) ,max(points[:,Y])]
-
         polygon_points = points[:, [X,Y]]
         
         # we need to ask for a name for the vol_id
@@ -1007,50 +1019,27 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             path_id = dlg.lineEditField.text()
             path_type = self.pathtype_choice.currentText()
             path_directions = self.direction_choice.currentText()
-            extrusion_axis = self.vol_path_3d_data["volumes"][vol_id]["extrusion_axis"]
-            extrusion_limits = self.vol_path_3d_data["volumes"][vol_id]["extrusion_limits]
 
-            path = generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_order, path_type, path_directions)
+            self.vol_path_3d_data["paths"][path_id] = {
+                "vol_id": vol_id,
+                "path_order": path_order,
+                "steps": steps,
+                "path_type": path_type,
+                "path_directions": path_directions,
+                "scan_coords": [np.min(X), np.max(X), np.min(Y), np.max(Y), np.min(Z), np.max(Z)]
+            }
 
+            self.computePath()
 
-            retcode, res = self.pyrame.call("init_path@paths", path_id, "space_1", vol_id,
-                                            scan_x_step, scan_y_step, scan_z_step,
-                                            path_order, path_type, path_directions)
-            if retcode == 1:
-
-                retcode, res = self.pyrame.call("get_path@paths", "path_id")
-                if retcode == 1:
-                    scan_points = res
-                retcode, res = self.pyrame.call("get_path_length@paths", "path_id")
-                if retcode == 1:
-                    nb_points = res
-
-                X, Y, Z = [], [], []
-                for i in scan_points.split(";"):
-                    x, y, z = i.split(",")
-                    X.append(float(x))
-                    Y.append(float(y))
-                    Z.append(float(z))
-
-                self.vol_path_3d_data["paths"][path_id]= {
-                        "pyrame_string": [path_id,"space_1",vol_id,scan_x_step,scan_y_step,scan_z_step,path_order,path_type,path_directions],
-                        "vol_id": vol_id,
-                        "steps": [float(scan_x_step),float(scan_y_step),float(scan_z_step)],
-                        "nb_points": int(nb_points),
-                        "path_type": path_type,
-                        "path_directions": path_directions,
-                        "scan_coords": [np.min(X),np.max(X),np.min(Y),np.max(Y),np.min(Z),np.max(Z)]
-                    }
-
-                self.start_scan.setEnabled(True)
-                self.delete_path.setEnabled(True)
-                self.path_nid += 1
-                self.path_choice.addItem(path_id)
-                # avoid triggering the programmatic change of the Qcombobox volume_choice
-                self.path_choice.blockSignals(True)
-                self.path_choice.setCurrentText(path_id)
-                self.path_choice.blockSignals(False)
-                #self.nb_plot_points = float(res.split(":")[0])
+            self.start_scan.setEnabled(True)
+            self.delete_path.setEnabled(True)
+            self.path_nid += 1
+            self.path_choice.addItem(path_id)
+            # avoid triggering the programmatic change of the Qcombobox volume_choice
+            self.path_choice.blockSignals(True)
+            self.path_choice.setCurrentText(path_id)
+            self.path_choice.blockSignals(False)
+            #self.nb_plot_points = float(res.split(":")[0])
 
     def deletePath(self):
         print("deletePath:self.sender:",self.sender())
@@ -1142,7 +1131,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         self.thread = QThread()
 
-        self.worker = Worker(move_params, self.pyrame,self) #MUWorker(move_params, self.pyrame)
+        self.worker = Worker(move_params, self.pyrame, self) #MUWorker(move_params, self.pyrame)
 
         # Step 4: Move worker to the thread
         self.worker.moveToThread(self.thread)
@@ -1165,17 +1154,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.thread.start()
 
         self.scan3d_plot = Scan3dPlotDialog(self.worker)
-        vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
-        steps = self.vol_path_3d_data["paths"][path_id]["steps"]
-        coords = self.vol_path_3d_data["paths"][path_id]["scan_coords"]
-        self.nb_plot_points = self.vol_path_3d_data["paths"][path_id]["nb_points"]
-        Nx = int((10.*coords[1] - 10*coords[0]) / (10.*steps[0])) + 1
-        Ny = int((10.*coords[3] - 10*coords[2]) / (10.*steps[1])) + 1
-        Nz = int((10.*coords[5] - 10*coords[4]) / (10.*steps[2])) + 1
-        #data_structure = [_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf]
-        print("steps ",steps,(coords[1] - coords[0]) / steps[0],(coords[3] - coords[2]) / steps[1],(coords[5] - coords[4]) / steps[2])
-        data_structure = [Nx, coords[0], coords[1], Ny, coords[2], coords[3], Nz, coords[4], coords[5]]
-        print("Data structure",data_structure)
         self.scan3d_plot.init_plot_data(data_structure)
         self.scan3d_plot.show()
         self.scan3d_plot.scan3d_nbpoints.setText(str(self.nb_plot_points))
@@ -1201,6 +1179,52 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             else:
                 self.data_file.write("# gaussmeter probe ERROR %s \n" % res)
             self.data_file.write("# mag ang probe ang\tx glob\ty glob\tz glob\tx local\ty local\tz local\tX Bfield\tY Bfield\tZ Bfield\tV Bfield\tdate\telapsed time\trange\n")
+
+    def computePath(self):
+        """
+        Calcule le chemim que doit décrire le setup pour mesurer l'aimant
+        :return:
+        """
+
+        # on récupére les paramètres de l'interface ainsi que ceux du dictionnaire pour
+        # construire le chemin
+        path_id = self.path_choice.currentText()
+
+        vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
+        poly_coords = None
+        ext_axis = None
+        ext_limits = None
+        steps = None
+        path_order = None
+        path_type = None
+        path_directions = None
+
+        path = generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_order, path_type,
+                             path_directions)
+
+        X, Y, Z = [], [], []
+        for i in scan_points.split(";"):
+            x, y, z = i.split(",")
+            X.append(float(x))
+            Y.append(float(y))
+            Z.append(float(z))
+
+        self.points[path_id] = paths.generate_path(poly_coords, ext_axis, ext_limits,
+                                                   steps,
+                                                   path_order, path_type, path_directions)
+        vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
+        steps = self.vol_path_3d_data["paths"][path_id]["steps"]
+        coords = self.vol_path_3d_data["paths"][path_id]["scan_coords"]
+        self.nb_plot_points = self.vol_path_3d_data["paths"][path_id]["nb_points"]
+        Nx = int((10.*coords[1] - 10*coords[0]) / (10.*steps[0])) + 1
+        Ny = int((10.*coords[3] - 10*coords[2]) / (10.*steps[1])) + 1
+        Nz = int((10.*coords[5] - 10*coords[4]) / (10.*steps[2])) + 1
+        #data_structure = [_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf]
+        print("steps ",steps,(coords[1] - coords[0]) / steps[0],(coords[3] - coords[2]) / steps[1],(coords[5] - coords[4]) / steps[2])
+        data_structure = [Nx, coords[0], coords[1], Ny, coords[2], coords[3], Nz, coords[4], coords[5]]
+        print("Data structure",data_structure)
+
+
 
 import click
 @click.command()
