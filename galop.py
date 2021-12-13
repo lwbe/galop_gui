@@ -304,19 +304,16 @@ class Worker(QObject):
 
     def run(self):
 
-        retcode, res = self.pyrame.call("get_pos@motions", "axis_x")
-        x = res
-        retcode, res = self.pyrame.call("get_pos@motions", "axis_y")
-        y = res
-        retcode, res = self.pyrame.call("get_pos@motions", "axis_z")
-        z = res
-        current_point = nd.array([x, y, z])
+        retcode, x = self.pyrame.call("get_pos@motions", "axis_x")
+        retcode, y = self.pyrame.call("get_pos@motions", "axis_y")
+        retcode, z = self.pyrame.call("get_pos@motions", "axis_z")
+        current_point = np.array([x, y, z])
 
         run = True
         index = 0
         while run:
             if not self._issuspended:
-                p = path[index]
+                p = self.path[index]
                 steps = p - current_point
                 retcode, res = self.pyrame.call("move@motion","axis_x", steps[0], speed, acc)
                 retcode, res = self.pyrame.call("move@motion","axis_y", steps[1], speed, acc)
@@ -325,8 +322,9 @@ class Worker(QObject):
                 self.master_widget.updatePositionWidget()
                 self.master_widget.updateGaussmeterWidget()
                 self.field.emit() #"%s;%s" % (position, field))
-                if index == path.shape[0] or not self._isrunning :
+                if index == path.shape[0] or not self._isrunning:
                     run = False
+                index += 1
         self.finished.emit()
 
 ############################################################################################################
@@ -663,6 +661,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             "volumes": {},
             "paths": {}
             }
+        self.path_points = {}
+        self.scan_parameters = {}
 
     def check_state(self, *args, **kwargs):
         sender = self.sender()
@@ -703,6 +703,8 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         name, _ = QFileDialog.getOpenFileName(self, "Load scan file", filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
         if not name:
             return
+
+        return
 
         self.vol_path_3d_data = json.loads(open(name).read())
 
@@ -936,10 +938,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             coord_m = [0, 1, 2]
 
         X, Y, Z = coord_m
-        plot_boundaries[Z] = [min(ext_axis_end,ext_axis_start), max(ext_axis_end,ext_axis_start)]
-        plot_boundaries[X] = [min(points[:,X]) ,max(points[:,X])]
-        plot_boundaries[Y] = [min(points[:,Y]) ,max(points[:,Y])]
-        polygon_points = points[:, [X,Y]]
+        plot_boundaries[Z] = [min(ext_axis_end, ext_axis_start), max(ext_axis_end, ext_axis_start)]
+        plot_boundaries[X] = [min(points[:, X]), max(points[:, X])]
+        plot_boundaries[Y] = [min(points[:, Y]), max(points[:, Y])]
+        polygon_points = points[:, [X, Y]]
         
         # we need to ask for a name for the vol_id
         dlg = askForName()
@@ -957,7 +959,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                     "polygon_points": polygon_points.tolist(),
                     "plot_boundaries": plot_boundaries.tolist()
                 }
-                print(self.vol_path_3d_data["volumes"][vol_id])
                 self.save_scan.setEnabled(True)
                 self.create_path.setEnabled(True)
                 self.delete_volume.setEnabled(True)
@@ -1131,7 +1132,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         self.thread = QThread()
 
-        self.worker = Worker(move_params, self.pyrame, self) #MUWorker(move_params, self.pyrame)
+        self.worker = Worker(self.path_points[path_id], move_params, self.pyrame, self)
 
         # Step 4: Move worker to the thread
         self.worker.moveToThread(self.thread)
@@ -1154,7 +1155,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.thread.start()
 
         self.scan3d_plot = Scan3dPlotDialog(self.worker)
-        self.scan3d_plot.init_plot_data(data_structure)
+        self.scan3d_plot.init_plot_data(self.scan_parameters[path_id])
         self.scan3d_plot.show()
         self.scan3d_plot.scan3d_nbpoints.setText(str(self.nb_plot_points))
         self.scan3d_plot_time_previous_step = time.time()
@@ -1189,34 +1190,22 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         # on récupére les paramètres de l'interface ainsi que ceux du dictionnaire pour
         # construire le chemin
         path_id = self.path_choice.currentText()
-
         vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
-        poly_coords = None
-        ext_axis = None
-        ext_limits = None
-        steps = None
-        path_order = None
-        path_type = None
-        path_directions = None
 
-        path = generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_order, path_type,
-                             path_directions)
-
-        X, Y, Z = [], [], []
-        for i in scan_points.split(";"):
-            x, y, z = i.split(",")
-            X.append(float(x))
-            Y.append(float(y))
-            Z.append(float(z))
+        poly_coords = self.vol_path_3d_data["volumes"][vol_id]["polygon_points"]
+        ext_axis = self.vol_path_3d_data["volumes"][vol_id]["extrusion_axis"]
+        ext_limits = self.vol_path_3d_data["volumes"][vol_id]["extrusion_limits"]
+        steps = self.vol_path_3d_data["paths"][path_id]["steps"]
+        path_order = self.vol_path_3d_data["paths"][path_id]["path_order"]
+        path_type = self.vol_path_3d_data["paths"][path_id]["path_type"]
+        path_directions = self.vol_path_3d_data["paths"][path_id]["path_directions"]
 
         self.points[path_id] = paths.generate_path(poly_coords, ext_axis, ext_limits,
                                                    steps,
                                                    path_order, path_type, path_directions)
-        vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
-        steps = self.vol_path_3d_data["paths"][path_id]["steps"]
-        coords = self.vol_path_3d_data["paths"][path_id]["scan_coords"]
-        self.nb_plot_points = self.vol_path_3d_data["paths"][path_id]["nb_points"]
-        Nx = int((10.*coords[1] - 10*coords[0]) / (10.*steps[0])) + 1
+        for i in range(3):
+
+        nb_points = [int((10.*coords[1] - 10*coords[0]) / (10.*steps[0])) + 1
         Ny = int((10.*coords[3] - 10*coords[2]) / (10.*steps[1])) + 1
         Nz = int((10.*coords[5] - 10*coords[4]) / (10.*steps[2])) + 1
         #data_structure = [_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf]
