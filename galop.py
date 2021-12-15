@@ -24,19 +24,17 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QComboBox
 )
-from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator, QValidator
 
 # matplotlib imports
 #from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import axes3d
 from matplotlib import cm
 
 # Ui imports
 from galop_ui import Ui_MainWindow
 from scan3dwidget_ui import Ui_Form
-
 
 import paths
 
@@ -49,11 +47,9 @@ cmdmod /opt/pyrame/cmd_paths.xml &
 cmdmod /opt/pyrame/cmd_ls_460.xml &
 """
 
-_Nx, _Xi, _Xf, _Ny, _Yi, _Yf, _Nz, _Zi, _Zf = 10, -2, 2, 10, -2, 2, 10, -2, 2
-
 # datas should be taken from a file
 initial_values = {
-    "x_origin" : "0.0",
+    "x_origin": "0.0",
     "x_step": "5.0",
     "x_acc": "2",
     "x_speed": "2",
@@ -106,7 +102,8 @@ pyrame_modules_configuration = {
     },
 }
 
-SIMULATE = None
+SIMULATE = False
+
 
 ############################################################################################################
 class Pyrame(object):
@@ -120,10 +117,6 @@ class Pyrame(object):
         self.ext_limits = None
         self.points = {}
         self.max_points = {}
-
-        # pyrame
-        if not SIMULATE:
-            import bindpyrame
 
     # Pyrame Stuff
     def initModules(self,pyrame_modules_configuration):
@@ -320,11 +313,11 @@ class Worker(QObject):
 
     def run(self):
 
-        retcode, res = self.pyrame.call("get_pos@motions", "axis_x")
+        retcode, res = self.pyrame.call("get_pos@motion", "axis_x")
         x = float(res)
-        retcode, res = self.pyrame.call("get_pos@motions", "axis_y")
+        retcode, res = self.pyrame.call("get_pos@motion", "axis_y")
         y = float(res)
-        retcode, res = self.pyrame.call("get_pos@motions", "axis_z")
+        retcode, res = self.pyrame.call("get_pos@motion", "axis_z")
         z = float(res)
         current_point = np.array([x, y, z])
 
@@ -959,7 +952,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         plot_boundaries[X] = [min(points[:, X]), max(points[:, X])]
         plot_boundaries[Y] = [min(points[:, Y]), max(points[:, Y])]
         polygon_points = points[:, [X, Y]]
-        
+        print("plot_boundaries type: ",type(plot_boundaries), type(plot_boundaries[X]))
         # we need to ask for a name for the vol_id
         dlg = askForName()
         dlg.message.setText("Enter volume id")
@@ -970,7 +963,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 self.vol_path_3d_data["volumes"][vol_id] = {
                     "coord_m": coord_m,
                     "extrusion_axis": ext_axis,
-                    "extrusion_limits": plot_boundaries[Z],
+                    "extrusion_limits": plot_boundaries[Z].tolist(),
                     "origin": origin.tolist(),
                     "points": points.tolist(),
                     "polygon_points": polygon_points.tolist(),
@@ -1268,6 +1261,9 @@ def main(simulate):
     global SIMULATE
     print(simulate)
     SIMULATE = simulate
+    if not SIMULATE:
+        import bindpyrame
+
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
