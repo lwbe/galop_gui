@@ -6,6 +6,7 @@ import time
 import json
 from pprint import pprint
 from datetime import datetime
+import bindpyrame
 
 import click
 import numpy as np
@@ -787,7 +788,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         else:
             p = []
             for a in self.AXIS_3D:
-                print("self.pyrame type: ", type(self.pyrame))
                 retcode, res = self.pyrame.call("get_pos@motion", "axis_%s" % a)
                 if retcode == 1:
                     p.append(res)
