@@ -6,7 +6,7 @@ import time
 import json
 from pprint import pprint
 from datetime import datetime
-import bindpyrame
+# import bindpyrame
 
 import click
 import numpy as np
@@ -725,15 +725,11 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         # courante mais le problème dans ce cas est d'eviter les doublons
         self.vol_path_3d_data = json.loads(open(name).read())
 
-        self.volume_choice.blockSignals(True)
-        for vol_id in self.vol_path_3d_data["volumes"]:
-            self.volume_choice.addItem(vol_id)
-        self.volume_choice.blockSignals(False)
+        #self.volume_choice.blockSignals(True)
+        #for vol_id in self.vol_path_3d_data["volumes"]:
+        #    self.volume_choice.addItem(vol_id)
+        #self.volume_choice.blockSignals(False)
 
-        self.path_choice.blockSignals(True)
-        for path_id in self.vol_path_3d_data["paths"]:
-            self.path_choice.addItem(path_id)
-        self.path_choice.blockSignals(False)
 
         # update GUI buttons
         self.create_volume.setEnabled(True)
@@ -748,7 +744,17 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         # update the GUI  using the path given o
         # self.path_choice.addItem(path_id)
         if self.vol_path_3d_data["paths"]:
-            self.setPathParameters()
+            path_ids = list(self.vol_path_3d_data["paths"].keys())
+            print("path_ids: ", path_ids)
+            vol_id = self.vol_path_3d_data["paths"][path_ids[0]]["vol_id"]
+            self.volume_choice.blockSignals(True)
+            self.volume_choice.addItem(vol_id)
+            self.volume_choice.blockSignals(False)
+            self.setVolumeParameters()
+
+            self.path_choice.blockSignals(True)
+            self.path_choice.addItem(path_ids[0])
+            self.path_choice.blockSignals(False)
 
         
     def saveScanParam(self):
