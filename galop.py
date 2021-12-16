@@ -1011,26 +1011,31 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             getattr(self, "%s_origin" % d).setText(str(v))
             g = getattr(self, "%s_global" % d).text()
             getattr(self, "%s_local" % d).setText(str(v-float(g)))
+
+        origin = np.array(vol_data["origin"])
+        points = np.array(vol_data["points"])
+        pmo = points-origin
         self.points_3d.clear()
-        self.points_3d.addItems([",".join(["%s" % c for c in p]) for p in vol_data["points"]])
+        self.points_3d.addItems([",".join(["%s" % c for c in p]) for p in pmo])
 
         # on teste si le path_id courant contient le vol_id si oui alors on ne fait rien sinon
         # on modifie les paths
 
         path_id = self.path_choice.currentText()
-        if self.vol_path_3d_data["paths"][path_id]["vol_id"] == vol_id:
-            return
-        else:
-            list_of_paths = []
-            for p in self.vol_path_3d_data["paths"].items():
-                if p[1]["vol_id"] == vol_id:
-                    list_of_paths.append(p[0])
-            if list_of_paths:
-                self.path_choice.blockSignals(True)
-                self.path_choice.clear()
-                self.path_choice.addItems(list_of_path)
-                self.path_choice.blockSignals(False)
-                self.setPathParameters()
+        if path_id:
+            if self.vol_path_3d_data["paths"][path_id]["vol_id"] == vol_id:
+                return
+
+        list_of_paths = []
+        for p in self.vol_path_3d_data["paths"].items():
+            if p[1]["vol_id"] == vol_id:
+                list_of_paths.append(p[0])
+        if list_of_paths:
+            self.path_choice.blockSignals(True)
+            self.path_choice.clear()
+            self.path_choice.addItems(list_of_paths)
+            self.path_choice.blockSignals(False)
+            self.setPathParameters()
 
     def createPath(self):
         map_xyzton={
