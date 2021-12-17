@@ -746,15 +746,16 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         if self.vol_path_3d_data["paths"]:
             path_ids = list(self.vol_path_3d_data["paths"].keys())
             print("path_ids: ", path_ids)
+
             vol_id = self.vol_path_3d_data["paths"][path_ids[0]]["vol_id"]
             self.volume_choice.blockSignals(True)
             self.volume_choice.addItem(vol_id)
             self.volume_choice.blockSignals(False)
             self.setVolumeParameters()
 
-            self.path_choice.blockSignals(True)
-            self.path_choice.addItem(path_ids[0])
-            self.path_choice.blockSignals(False)
+            #self.path_choice.blockSignals(True)
+            #self.path_choice.addItem(path_ids[0])
+            #self.path_choice.blockSignals(False)
 
         
     def saveScanParam(self):
@@ -1022,6 +1023,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         # on modifie les paths
 
         path_id = self.path_choice.currentText()
+        print("path_id", path_id)
         if path_id:
             if self.vol_path_3d_data["paths"][path_id]["vol_id"] == vol_id:
                 return
@@ -1030,6 +1032,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for p in self.vol_path_3d_data["paths"].items():
             if p[1]["vol_id"] == vol_id:
                 list_of_paths.append(p[0])
+        print("list_of_paths: ", list_of_paths)
         if list_of_paths:
             self.path_choice.blockSignals(True)
             self.path_choice.clear()
@@ -1102,6 +1105,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def setPathParameters(self):
         # print("setPathParameters called")
+        print("setPathParameters: self.path_choice.count()", self.path_choice.count())
         path_id = self.path_choice.currentText()
         path_data = self.vol_path_3d_data["paths"][path_id]
         self.scan_x_step.setText(str(path_data["steps"][0]))
@@ -1111,11 +1115,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.direction_choice.setCurrentText(path_data["path_directions"])
  
         vol_id = path_data["vol_id"]
-        print("setPathParameters: vol_id", vol_id,self.volume_choice.currentText())
+        print("setPathParameters: vol_id", vol_id,self.volume_choice.currentText(),self.volume_choice.currentText() == vol_id)
         # si le volume courant est celui du path_id alors on ne fait rien sinon on met à jour
         if self.volume_choice.currentText() == vol_id:
             return
         # TODEBUG self.volume_choice.setCurrentText(vol_id) should trigger self.setVolumeParameters()
+        print("setPathParameters: self.path_choice.count()", self.path_choice.count())
         self.volume_choice.setCurrentText(vol_id)
         self.setVolumeParameters()
         
@@ -1258,7 +1263,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for i in range(3):
             pb_1 = plot_boundaries[i][1]
             pb_0 = plot_boundaries[i][0]
-            N = int((10.*pb_1 - 10*pb_0) / (10.*steps[0])) + 1
+            N = int((10.*pb_1 - 10*pb_0) / (10.*steps[i])) + 1
             data_structure.extend([N, pb_1, pb_0])
             
         self.scan_parameters[path_id] = data_structure
