@@ -741,21 +741,25 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.delete_position.setEnabled(True)
         self.set_origin.setEnabled(False)
 
-        # update the GUI  using the path given o
-        # self.path_choice.addItem(path_id)
+        # on recupere un vol_id dans la section Paths ou à defaut Volumes.
         if self.vol_path_3d_data["paths"]:
-            path_ids = list(self.vol_path_3d_data["paths"].keys())
-            print("path_ids: ", path_ids)
+            vol_ids=[]
+            for p in list(self.vol_path_3d_data["paths"].keys()):
+                vol_ids.append(self.vol_path_3d_data["paths"][p]["vol_id"])
+        elif self.vol_path_3d_data["volumes"]:
+            vol_ids = list(self.vol_path_3d_data["volumes"].keys())
+        else:
+            return
 
-            vol_id = self.vol_path_3d_data["paths"][path_ids[0]]["vol_id"]
-            self.volume_choice.blockSignals(True)
-            self.volume_choice.addItem(vol_id)
-            self.volume_choice.blockSignals(False)
-            self.setVolumeParameters()
+        print("vol_ids: ", vol_ids)
+        self.volume_choice.blockSignals(True)
+        self.volume_choice.addItems(vol_ids)
+        self.volume_choice.blockSignals(False)
+        self.setVolumeParameters()
 
-            #self.path_choice.blockSignals(True)
-            #self.path_choice.addItem(path_ids[0])
-            #self.path_choice.blockSignals(False)
+        #self.path_choice.blockSignals(True)
+        #self.path_choice.addItem(path_ids[0])
+        #self.path_choice.blockSignals(False)
 
         
     def saveScanParam(self):
