@@ -438,6 +438,10 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self._ax.view_init(30, 30)
         self.plot_object = None
         self.quiver_mode = False
+         self.canvas.mpl_connect("key_press_event", self.on_click)
+
+    def on_click(self,event):
+        print(event)
 
     def stop(self):
         # on demande confirmation pour fermer le fenêtre si on a pas fini l'acquisition.
