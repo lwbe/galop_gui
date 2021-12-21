@@ -11,7 +11,7 @@ from datetime import datetime
 import click
 import numpy as np
 
-#PyQt Imports
+# PyQt Imports
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -44,7 +44,6 @@ cmdmod /opt/pyrame/cmd_serial.xml &
 cmdmod /opt/pyrame/cmd_gpib.xml &
 cmdmod /opt/pyrame/cmd_th_apt.xml &
 cmdmod /opt/pyrame/cmd_motion.xml &
-cmdmod /opt/pyrame/cmd_paths.xml &
 cmdmod /opt/pyrame/cmd_ls_460.xml &
 """
 
@@ -105,10 +104,9 @@ pyrame_modules_configuration = {
 
 SIMULATE = False
 
-
 ############################################################################################################
 class Pyrame(object):
-    def __init__(self,parent):
+    def __init__(self, parent):
         self.module_port = {}
         self.parent = parent
         self.simulated_position = [0, 0, 0]
@@ -120,7 +118,7 @@ class Pyrame(object):
         self.max_points = {}
 
     # Pyrame Stuff
-    def initModules(self,pyrame_modules_configuration):
+    def initModules(self, pyrame_modules_configuration):
         # read conf file
         if SIMULATE:
             return
@@ -154,8 +152,15 @@ class Pyrame(object):
                          )
 
     def call_simulate(self, pyrame_func, *args):
+        """
+        Method to simulate Pyrame Call. It produces some datapoints
+        :param pyrame_func: The pyrame function to simulate
+        :param args: the args of the pyrame function
+        :return: retcode, value of the pyrame function
+
+        """
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        print("pyrame call :", pyrame_func, args)
+        #print("pyrame call :", pyrame_func, args)
         retval = "ok"
         if pyrame_func.startswith("init@"):
             pass
@@ -169,12 +174,11 @@ class Pyrame(object):
             else:
                 retval = str(self.simulated_position[2])
 
-
         elif pyrame_func.startswith("measure@"):
             retval = ",".join([str(i) for i in self.simulated_field])
-            print("measure ", retval)
+            #print("measure ", retval)
         elif pyrame_func.startswith("move@motion"):
-            print("args", args)
+            #print("args", args)
             if args[0] == "axis_x":
                 self.simulated_position = [self.simulated_position[0] + float(args[1]), self.simulated_position[1], self.simulated_position[2]]
             elif args[0] == "axis_y":
@@ -229,7 +233,7 @@ class Pyrame(object):
             retval = ";".join(["%s,%s,%s" % (p[0], p[1], p[2]) for p in self.points[path_id]])
         elif pyrame_func.startswith("move_first"):
             path_id = args[0]
-            print("path_id ", path_id)
+            #print("path_id ", path_id)
             self.current_point = 0
             self.simulated_position = self.points[path_id][self.current_point]
             x, y, z = self.simulated_position
@@ -291,8 +295,10 @@ class Pyrame(object):
         QApplication.restoreOverrideCursor()
         return retcode, res
 
+
 ###########################################################################
 # thread for scan
+###########################################################################
 class Worker(QObject):
     finished = pyqtSignal()
     field = pyqtSignal()
@@ -376,7 +382,6 @@ class askForName(QDialog):
             super().__init__(parent)
 
             self.setWindowTitle("Ask for name")
-
             self.message = QLabel('')
             self.lineEditField = QLineEdit()
 
@@ -391,16 +396,9 @@ class askForName(QDialog):
             self.layout.addWidget(self.buttonBox)
             self.setLayout(self.layout)
 
-# 3D scan class
-#class Scan3dPlotWidget(QWidget, Ui_Form):
-#    def __init__(self, parent=None):
-#        super(Scan3dPlotWidget,self).__init__(parent)
-#        self.setupUi(self)
-#        self.stop.clicked.connect(self.close)
 
 ############################################################################################################
 # 3D scan class
-#class Scan3dPlotDialog(QDialog, Ui_Dialog):
 class Scan3dPlotDialog(QDialog, Ui_Form):
 
     def __init__(self, working_thread, parent=None):
@@ -438,14 +436,16 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         self._ax.view_init(30, 30)
         self.plot_object = None
         self.quiver_mode = False
-         self.canvas.mpl_connect("key_press_event", self.on_click)
+        self.canvas.mpl_connect("button_press_event", self.on_click)
 
-    def on_click(self,event):
-        print(event)
+    def on_click(self, event):
+        # ne marche pas mais garder pour l'interaction entre matplolib et les event
+        if event.dblclick:
+            self._ax.dist = 10
 
     def stop(self):
         # on demande confirmation pour fermer le fenêtre si on a pas fini l'acquisition.
-        if self.scan3d_stop.text != "Close":
+        if self.scan3d_stop.text() != "Close":
             button = QMessageBox.question(self,
                                           "Quit",
                                           "Are you sure you want to stop ?",
@@ -564,7 +564,7 @@ class Scan3dPlotDialog(QDialog, Ui_Form):
         if self.plot_object:
             try:
                 self._ax.collections.remove(self.plot_object)
-            except:
+            except Exception as e:
                 # for quiver
                 for i in self.plot_object.collections:
                     i.remove()
@@ -745,25 +745,26 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.delete_position.setEnabled(True)
         self.set_origin.setEnabled(False)
 
-        # on recupere un vol_id dans la section Paths ou à defaut Volumes.
+        # on recupere les identifants de volumes dans les sections Paths et  Volumes.
+        vol_ids = []
         if self.vol_path_3d_data["paths"]:
-            vol_ids=[]
             for p in list(self.vol_path_3d_data["paths"].keys()):
-                vol_ids.append(self.vol_path_3d_data["paths"][p]["vol_id"])
-        elif self.vol_path_3d_data["volumes"]:
-            vol_ids = list(self.vol_path_3d_data["volumes"].keys())
-        else:
-            return
+                if self.vol_path_3d_data["paths"][p]["vol_id"] not in vol_ids:
+                    vol_ids.append(self.vol_path_3d_data["paths"][p]["vol_id"])
+            self.path_choice.clear()
 
-        print("vol_ids: ", vol_ids)
-        self.volume_choice.blockSignals(True)
-        self.volume_choice.addItems(vol_ids)
-        self.volume_choice.blockSignals(False)
-        self.setVolumeParameters()
+        if self.vol_path_3d_data["volumes"]:
+            for v in list(self.vol_path_3d_data["volumes"].keys()):
+                if v  not in vol_ids:
+                    vol_ids.append(v)
+        if vol_ids:
+            print("vol_ids: ", vol_ids)
+            self.volume_choice.blockSignals(True)
+            self.volume_choice.clear()
+            self.volume_choice.addItems(vol_ids)
+            self.volume_choice.blockSignals(False)
+            self.setVolumeParameters()
 
-        #self.path_choice.blockSignals(True)
-        #self.path_choice.addItem(path_ids[0])
-        #self.path_choice.blockSignals(False)
 
         
     def saveScanParam(self):
@@ -785,15 +786,6 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                                       )
 
         if button == QMessageBox.Yes:
-            # removing space, volume and paths ids
-            # we should also remove paths and volumes
-            #self.pyrame.call("deinit_space@paths", "space_1")
-            #for i in range(self.volume_choice.count()):
-            #    print(self.volume_choice.itemText(i))
-            #    self.pyrame.call("deinit_volume@paths",self.volume_choice.itemText(i))
-            #for i in range(self.path_choice.count()):
-            #    self.pyrame.call("deinit_path@paths",self.path_choice.itemText(i))
-            
             self.pyrame.deinitModules()
             self.close()
 
@@ -877,7 +869,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 pos = float(getattr(self, "%s_global" % axis).text())
             step = str(pos - curr_pos)
 
-        print("move: axis %s step %s speed %s acc %s" % (axis, step, speed, acc))
+        #print("move: axis %s step %s speed %s acc %s" % (axis, step, speed, acc))
         retcode, res = self.pyrame.call("move@motion","axis_%s" % axis, step, speed, acc)
         if retcode == 1:
             self.updatePositionWidget()
@@ -1031,7 +1023,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         # on modifie les paths
 
         path_id = self.path_choice.currentText()
-        print("path_id", path_id)
+        #print("path_id", path_id)
         if path_id:
             if self.vol_path_3d_data["paths"][path_id]["vol_id"] == vol_id:
                 return
@@ -1040,7 +1032,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         for p in self.vol_path_3d_data["paths"].items():
             if p[1]["vol_id"] == vol_id:
                 list_of_paths.append(p[0])
-        print("list_of_paths: ", list_of_paths)
+        #print("list_of_paths: ", list_of_paths)
         if list_of_paths:
             self.path_choice.blockSignals(True)
             self.path_choice.clear()
@@ -1049,11 +1041,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
             self.setPathParameters()
 
     def createPath(self):
-        map_xyzton={
-            "x": "1",
-            "y": "2",
-            "z": "3"
-        }
+        map_xyzton={ "x": "1", "y": "2", "z": "3" }
 
         vol_id = self.volume_choice.currentText()
         path_order = "".join([map_xyzton[i] for i in self.path.currentText()])
@@ -1113,8 +1101,10 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
     def setPathParameters(self):
         # print("setPathParameters called")
-        print("setPathParameters: self.path_choice.count()", self.path_choice.count())
+        #print("setPathParameters: self.path_choice.count()", self.path_choice.count())
         path_id = self.path_choice.currentText()
+        if path_id != '':
+            return
         path_data = self.vol_path_3d_data["paths"][path_id]
         self.scan_x_step.setText(str(path_data["steps"][0]))
         self.scan_y_step.setText(str(path_data["steps"][1]))
@@ -1123,12 +1113,12 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         self.direction_choice.setCurrentText(path_data["path_directions"])
  
         vol_id = path_data["vol_id"]
-        print("setPathParameters: vol_id", vol_id,self.volume_choice.currentText(),self.volume_choice.currentText() == vol_id)
+        #print("setPathParameters: vol_id", vol_id,self.volume_choice.currentText(),self.volume_choice.currentText() == vol_id)
         # si le volume courant est celui du path_id alors on ne fait rien sinon on met à jour
         if self.volume_choice.currentText() == vol_id:
             return
         # TODEBUG self.volume_choice.setCurrentText(vol_id) should trigger self.setVolumeParameters()
-        print("setPathParameters: self.path_choice.count()", self.path_choice.count())
+        #print("setPathParameters: self.path_choice.count()", self.path_choice.count())
         self.volume_choice.setCurrentText(vol_id)
         self.setVolumeParameters()
         
