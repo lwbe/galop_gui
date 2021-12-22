@@ -51,15 +51,15 @@ def generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_ord
     # on calcule le nombre de pas dans toute les directions
 
     nb_steps = [int((10 * coords[coord_m[i]][1] - 10 * coords[coord_m[i]][0]) / (10. * steps[coord_m[i]])) + 1 for i in range(3)]
-    print("coords: ", coords)
-    print("nb_steps ", nb_steps)
+    #print("coords: ", coords)
+    #print("nb_steps ", nb_steps)
     # on crée le nuage de points et on récupére ceux qui sont dans la
     # zone de mesure.
     inside_points = []
 
-    print("x: ",np.linspace(coords[0][0], coords[0][1], nb_steps[0]))
-    print("y: ",np.linspace(coords[1][0], coords[1][1], nb_steps[1]))
-    print("z: ",np.linspace(coords[2][0], coords[2][1], nb_steps[2]))
+    #print("x: ",np.linspace(coords[0][0], coords[0][1], nb_steps[0]))
+    #print("y: ",np.linspace(coords[1][0], coords[1][1], nb_steps[1]))
+    #print("z: ",np.linspace(coords[2][0], coords[2][1], nb_steps[2]))
     for x in np.linspace(coords[0][0], coords[0][1], nb_steps[0]):
         for y in np.linspace(coords[1][0], coords[1][1], nb_steps[1]):
             for z in np.linspace(coords[2][0], coords[2][1], nb_steps[2]):
@@ -100,11 +100,6 @@ def generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_ord
             m_factor *= -1
 
     return np.array(all_points)
-
-def generate_path_pyrame(poly_points, extrusion_axis, extrusion_limits, steps, path_order, path_type, path_directions):
-    path = generate_path(poly_points, extrusion_axis, extrusion_limits, steps, path_order, path_type, path_directions)
-    print(path.shape, path[:, 0])
-    return len(path), ";".join(["%s,%s,%s" % (p[0], p[1], p[2]) for p in path])
 
 
 if __name__ == "__main__":

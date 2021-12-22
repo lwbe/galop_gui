@@ -248,7 +248,7 @@ class Pyrame(object):
             path_id = args[0]
 
             self.current_point += 1
-            print(self.current_point, self.max_points)
+            #print(self.current_point, self.max_points)
             if self.current_point == self.max_points[path_id]:
                 retval = "finished"
             else:
@@ -259,9 +259,13 @@ class Pyrame(object):
                 bz = (np.sqrt(2.0 / 3.0) * np.cos(np.pi * x) * np.cos(np.pi * y) * np.sin(np.pi * z))
                 bn = np.sqrt(bx * bx + by * by + bz * bz)
                 self.simulated_field = [bx, by, bz, bn]
-                time.sleep(0.5)
+                time.sleep(0.1)
+
+        elif pyrame_func == "free_query@ls_460" and args ==('gaussmeter', 'SNUM?'):
+            retval = "fake_prob"
         else:
             print("pyrame call : UNKNOWN function", pyrame_func, args)
+
         QApplication.restoreOverrideCursor()
         return 1, retval
 
@@ -758,7 +762,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
                 if v  not in vol_ids:
                     vol_ids.append(v)
         if vol_ids:
-            print("vol_ids: ", vol_ids)
+            #print("vol_ids: ", vol_ids)
             self.volume_choice.blockSignals(True)
             self.volume_choice.clear()
             self.volume_choice.addItems(vol_ids)
@@ -770,7 +774,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
     def saveScanParam(self):
         name, _ = QFileDialog.getSaveFileName(self, 'Save scan file', filter="Scan Files (*.json) ;; All Files (*)", initialFilter='*.json')
         if name:
-            print(self.vol_path_3d_data)
+            #print(self.vol_path_3d_data)
             with open(name, 'w') as file:
                 file.write(json.dumps(self.vol_path_3d_data, indent=4))
 
@@ -959,7 +963,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         plot_boundaries[X] = [min(points[:, X]), max(points[:, X])]
         plot_boundaries[Y] = [min(points[:, Y]), max(points[:, Y])]
         polygon_points = points[:, [X, Y]]
-        print("plot_boundaries type: ",type(plot_boundaries), type(plot_boundaries[X]))
+        #print("plot_boundaries type: ",type(plot_boundaries), type(plot_boundaries[X]))
         # we need to ask for a name for the vol_id
         dlg = askForName()
         dlg.message.setText("Enter volume id")
@@ -1215,7 +1219,7 @@ class MainWindow(QMainWindow,Ui_MainWindow):
         data_filename = "%s%s%s" % (DATADIR,data_prefix,datetime.now().strftime("%Y_%m_%d_%H.%M"))
 
         name, _ = QFileDialog.getSaveFileName(self, 'Scan Data file', directory=data_filename)
-        print("filename :",name)
+        #print("filename :", name)
 
         if name:
             self.data_file = open(name, "w", 1)
@@ -1237,13 +1241,13 @@ class MainWindow(QMainWindow,Ui_MainWindow):
 
         # on récupére les paramètres de l'interface ainsi que ceux du dictionnaire pour
         # construire le chemin
-        pprint(self.vol_path_3d_data, depth=3)
+        #pprint(self.vol_path_3d_data, depth=3)
         path_id = self.path_choice.currentText()
 
         # si on à déjà calculé ce chemin on ne fait rien.
         if self.path_points.get(path_id):
             return
-        print("path_id: ", path_id,self.path_choice.count())
+        #print("path_id: ", path_id,self.path_choice.count())
         vol_id = self.vol_path_3d_data["paths"][path_id]["vol_id"]
 
         poly_coords = np.array(self.vol_path_3d_data["volumes"][vol_id]["polygon_points"])
@@ -1272,8 +1276,8 @@ import click
 @click.command()
 @click.option("--simulate", is_flag=True, help="simulate the device")
 def main(simulate):
+
     global SIMULATE
-    print(simulate)
     SIMULATE = simulate
     if not SIMULATE:
         import bindpyrame
@@ -1282,6 +1286,7 @@ def main(simulate):
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()
